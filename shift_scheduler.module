@@ -28,13 +28,13 @@ Used as a subroutine to shift_scheduler_schedule()
 @param page_content The page_content so far, to which the table row will be appended
 @param slot_cells An array, of strings representing the content that should be written in for each slot.
 @param timestamp A timestamp that occurs sometime on the day to be written.
-@param slot_count The number of slots to be written
+@param slot_ids An array with all of the slot id numbers
 */
-function _write_date_row(&$page_content, $slot_cells, $timestamp, $slot_count){
+function _write_date_row(&$page_content, $slot_cells, $timestamp, $slot_ids){
   $page_content .= '<tr> <td valign="center" class="table-label">';
   $page_content .='<b>' . date('l n/j/Y', $timestamp) . '</b> </td>' ;
-  for($i = 0; $i< $slot_count ; $i++) {
-    $page_content .= '<td>' . $slot_cells[$i] . '</ td>';
+  foreach($slot_ids as $slot_id) {
+    $page_content .= '<td>' . $slot_cells[$slot_id] . '</ td>';
   }
   $page_content .= '</tr>';
 
@@ -145,26 +145,26 @@ function shift_scheduler_schedule(){
   //TODO: use drupal calls to make the table
   //get the slot names and the number of slots
   $slots_result = db_query('SELECT slot_id, display_name FROM {shift_scheduler_slots} WHERE status=0');//active slots only
-  $slot_count =0;
+  $slot_ids = array();
   while($slot_row = db_fetch_object($slots_result)){
-    $slot_count++;
+    $slot_ids[] = $slot_row->slot_id;
     $page_content .= '<th valign="top">'. $slot_row->display_name .'</th>';
   }
   $page_content .= '</tr>';
 	
   $volunteer_cells = array();
-  for($i =0; $i<$slot_count; $i++){//init $volunteer_cells
-    $volunteer_cells[$i] = '';
+  foreach($slot_ids as $slot_id){//init $volunteer_cells
+    $volunteer_cells[$slot_id] = '';
   }
   while( $row = db_fetch_object($queryResult)) {
     $has_content = TRUE;
     $start_time_t = strtotime($row->start_time);
     $end_time_t = strtotime($row->end_time);
     if($start_time_t > $midnight){//a new day -> write the row and reset the variables appropriately
-      _write_date_row($page_content, $volunteer_cells, $midnight-10, $slot_count);
+      _write_date_row($page_content, $volunteer_cells, $midnight-10, $slot_ids);
       $midnight = mktime(0,0,0,date('n',$start_time_t), date('j',$start_time_t)+1, date('Y',$start_time_t) ); //move $midnight to the midnight after the start time
-      for($i =0; $i<$slot_count; $i++){//reset volunteer cells
-	$volunteer_cells[$i] = '';
+      foreach($slot_ids as $slot_id){//init $volunteer_cells
+	$volunteer_cells[$slot_id] = '';
       }
     }
     //get the volunteer's name
@@ -190,11 +190,11 @@ function shift_scheduler_schedule(){
     elseif($row->uid==$user->uid){
       $shift_text = '<font style="BACKGROUND-COLOR: #254117">' . $shift_text . '</font>'; 
     }
-    $volunteer_cells[$row->slot_id-1] .= '<p> ' . $shift_text .  "</p>";
+    $volunteer_cells[$row->slot_id] .= '<p> ' . $shift_text .  "</p>";
     
     
   }
-  _write_date_row($page_content, $volunteer_cells, $midnight-10, $slot_count);//write the last day
+  _write_date_row($page_content, $volunteer_cells, $midnight-10, $slot_ids);//write the last day
   $page_content .= '</tbody> </table>';
 
   //display something if there is no content on the page
