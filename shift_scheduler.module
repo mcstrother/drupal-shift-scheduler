@@ -251,7 +251,6 @@ Create new days and fill with the defaut shifts
 function shift_scheduler_create_days_form_submit($form, &$form_state){
   $result = db_query('SELECT * FROM {shift_scheduler_slot_times} INNER JOIN {shift_scheduler_slots} ON {shift_scheduler_slot_times}.slot_id={shift_scheduler_slots}.slot_id WHERE {shift_scheduler_slots}.status=%d',0);
   //get start date from form
-  //TODO: clean this up to use 'values'
   $sday = $form_state['values']['start_date']['day'];
   $smon = $form_state['values']['start_date']['month'];
   $syear = $form_state['values']['start_date']['year'];
