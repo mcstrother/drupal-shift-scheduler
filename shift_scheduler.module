@@ -491,15 +491,12 @@ function shift_scheduler_old_shifts_form_submit($form, &$form_state){
   $fi = $form_state['values'];/*fi = form info*/
   $start_time = mktime(0,0,0, $fi['start_date']['month'], $fi['start_date']['day'], $fi['start_date']['year']);
   $end_time = mktime(0,0,0, $fi['end_date']['month'], $fi['end_date']['day'], $fi['end_date']['year']);
-  $form_state['redirect'] = array('shift_scheduler/old_shifts_results', 'uid=' . $fi['volunteer'] .'&' . 'start_time='. $start_time . '&' . 'end_time='.$end_time );
-  
-					       
+  $form_state['redirect'] = array('shift_scheduler/old_shifts_results', 'uid=' . $fi['volunteer'] .'&' . 'start_time='. $start_time . '&' . 'end_time='.$end_time );	       
 }
 
 function shift_scheduler_old_shifts(){
   $page_content =drupal_get_form('shift_scheduler_old_shifts_form');
   return $page_content;
-   
 }
 
 /*
@@ -549,9 +546,8 @@ function shift_scheduler_old_shifts_results(){
   }
   $page_content .= '</tbody></table>';
   if(!$has_content){
-    $page_contant .= "No shifts to display"; 
+    $page_content .= "No shifts to display"; 
   }  
-
   $page_content .= '<p><b> Total duty taken:</b>' . 
     floor($total_duty / 3600) . ' hours ' .
     floor(($total_duty % 3600)/60) . ' minutes </p>';
