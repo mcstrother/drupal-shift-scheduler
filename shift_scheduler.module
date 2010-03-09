@@ -873,7 +873,6 @@ function shift_scheduler_menu(){
 							       'access arguments' => array('administer shift_scheduler'),
 							       'type' => MENU_CALLBACk
 							       );
-
-
   return $items;
 }
+
