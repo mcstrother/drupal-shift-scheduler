@@ -19,7 +19,7 @@ function shift_scheduler_help($path, $arg) {
 /*Core drupal hook.  Defines the relevant permissions
  for the shift_scheduler module*/
 function shift_scheduler_perm(){
-  return array('access shift_scheduler','edit shift_scheduler', 'administer shift_scheduler');
+  return array('access shift schedule','edit shift schedule', 'administer shift_scheduler');
 
 }
 /*
@@ -174,7 +174,7 @@ function shift_scheduler_schedule(){
     $shift_text = $name . ' ' . date('Hi', $start_time_t) . ' -  ' . date('Hi', $end_time_t);
     //If the user has the correct permissions, and the shift didn't occur too far in the past,
     //make the text into a link so it can be edited
-    if(user_access('edit shift_scheduler') && $start_time_t > (time() - 60*60*4)){ 
+    if(user_access('edit shift schedule') && $start_time_t > (time() - 60*60*4)){ 
       $options = array('query' => 'shift=' . $row->shift_id);
       if ($name=="Open Shift"){
 	$options['attributes'] = array('style' => 'color: #FF0000'); //make the link red
@@ -833,7 +833,7 @@ function shift_scheduler_menu(){
   $items['shift_scheduler'] = array(
 				  'title' => 'Shift Schedule',
 				  'page callback' => 'shift_scheduler_schedule',
-				  'access arguments' => array('access shift_scheduler'),
+				  'access arguments' => array('access shift schedule'),
 				  'type' => MENU_NORMAL_ITEM
 				  );
   $items['shift_scheduler/add_days'] = array(
@@ -845,19 +845,19 @@ function shift_scheduler_menu(){
   $items['shift_scheduler/change_shift'] = array(
 					       'title' => 'Change shift',
 					       'page callback' => 'shift_scheduler_change_shift',
-					       'access arguments' => array('edit shift_scheduler'),
+					       'access arguments' => array('edit shift schedule'),
 					       'type' => MENU_CALLBACK
 					       );
   $items['shift_scheduler/old_duty'] = array(
 					   'title' => 'Old duty',
 					   'page callback' => 'shift_scheduler_old_duty',
-					   'access arguments' => array('access shift_scheduler'),
+					   'access arguments' => array('access shift schedule'),
 					   'type' => MENU_NORMAL_ITEM
 					   );
   $items['shift_scheduler/old_duty_results']= array(
 						  'title' => 'Old duty',
 						  'page callback' => 'shift_scheduler_old_duty_results',
-						  'access arguments' => array('access shift_scheduler'),
+						  'access arguments' => array('access shift schedule'),
 						  'type' => MENU_CALLBACK
 						  );
   //TODO: find a way to get the following as a normal menu item 
