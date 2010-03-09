@@ -230,6 +230,21 @@ function shift_scheduler_create_days_form($form_state){
 }
 
 
+function shift_scheduler_create_days_form_validate($form, &$form_state){
+  $result = db_query('SELECT * FROM {shift_scheduler_slot_times} INNER JOIN {shift_scheduler_slots} ON {shift_scheduler_slot_times}.slot_id={shift_scheduler_slots}.slot_id WHERE {shift_scheduler_slots}.status=%d',0);
+  $slot_time = db_fetch_object($result);
+  $sday = $form_state['values']['start_date']['day'];
+  $smon = $form_state['values']['start_date']['month'];
+  $syear = $form_state['values']['start_date']['year'];
+  $start_time = mktime((int)($slot_time->start_time[11].$slot_time->start_time[12]), (int)($slot_time->start_time[14].$slot_time->start_time[15]), 0, $smon, $sday+$i, $syear);
+  //If the first shift to be added already exists in the database, say there is an error
+  $redundant = db_fetch_object(db_query("SELECT shift_id FROM {shift_scheduler_shifts} WHERE start_time='%s' AND slot_id=%d", date("Y-m-d H:i:00", $start_time),$slot_time->slot_id ));
+  if($redundant){
+    dvr('test');
+    form_set_error('start_date',t('Creating days failed because the first day you selected has already been created.'));
+  }
+}
+
 /*
 Create new days and fill with the defaut shifts
 */
@@ -251,17 +266,6 @@ function shift_scheduler_create_days_form_submit($form, &$form_state){
       $end_time = mktime((int)($slot_time->end_time[11].$slot_time->end_time[12]), (int)($slot_time->end_time[14].$slot_time->end_time[15]), 0, $smon, $sday+$i, $syear);
       if($end_time < $start_time){//infer if end time is on the next day
 	$end_time = $end_time + 60*60*24;
-      }
-      /*On the first day to be added, check to make sure the shifts to be added
-       aren't already in the database
-      TODO: move this to a validate method
-      Note that this method for checking is not foolproof if the default shifts are changed between days being added*/
-      if($i ==0){
-	$redundant = db_fetch_object(db_query("SELECT shift_id FROM {shift_scheduler_shifts} WHERE start_time='%s' AND slot_id=%d", date("Y-m-d H:i:00", $start_time),$slot_time->slot_id ));
-	if($redundant){
-	  drupal_set_message(t('Creating days failed because the first day you selected has already been created.')); //TODO: change this to form_set_error('start date') after this is moved to a validate method
-	  return;
-	}
       }
       $new_record = array(
 			 'slot_id' => $slot_time->slot_id,
