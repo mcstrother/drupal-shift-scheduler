@@ -9,7 +9,7 @@ function shift_scheduler_help($path, $arg) {
   $output = '';
   switch ($path) {
   case "admin/help#shift_scheduler":
-    $output = '<p>'.  t("Displays the duty schedule managed by shift_scheduler") .'</p>';
+    $output = '<p>'.  t("Displays the shift schedule managed by shift_scheduler") .'</p>';
     break;
   }
   return $output;
@@ -42,9 +42,9 @@ function _write_date_row(&$page_content, $slot_cells, $timestamp, $slot_count){
 
 
 /*
-Define a form to display old duty schedules.
+Define a form to display old shift schedules.
 The form currently allows the user to input a start date
-and the duty schedule is displayed for every day after that
+and the shift schedule is displayed for every day after that
 start date.
  */
 function shift_scheduler_old_schedule_form(){
@@ -61,7 +61,7 @@ function shift_scheduler_old_schedule_form(){
   $form['start_date']= array(
 			     '#type' => 'date',
 			     '#required' => TRUE,
-			     '#description' => t('Select a date to see an old duty schedule'),
+			     '#description' => t('Select a date to see an old shift schedule'),
 			     '#default_value' => $default
 			     );
   $form['submit'] = array('#type' => 'submit', '#value' => t('See old schedule'));  
@@ -111,7 +111,7 @@ function _schedule_format_name($uid){
   return $display_name;
 }
 
-/*Defines how the duty schedule should be displayed
+/*Defines how the shift schedule should be displayed
 Only used as a callback in shift_scheduler_menu
 */
 function shift_scheduler_schedule(){
@@ -205,7 +205,7 @@ function shift_scheduler_schedule(){
 
 }
 
-//Defines the form used to create new days on the duty schedule
+//Defines the form used to create new days on the shift schedule
 //(For the purposes of this module "creating a day" basically means
 //creating a bunch of open shifts at standard times in the schedule table
 function shift_scheduler_create_days_form($form_state){
@@ -214,13 +214,13 @@ function shift_scheduler_create_days_form($form_state){
 			      '#type' => 'date',
 			      '#title' => t('Start date'),
 			      '#required' => TRUE,
-			      '#description' => t('The first date to be created on the duty schedule.')
+			      '#description' => t('The first date to be created on the shift schedule.')
 			      );
   $form['end date'] = array(
 			    '#type' => 'date',
 			    '#title' => t('End date'),
 			    '#required' => TRUE,
-			    '#description' => t('The last date to be created on the duty schedule.')
+			    '#description' => t('The last date to be created on the shift schedule.')
 			    );
   $form['submit'] = array('#type' => 'submit', '#value' => t('Create days'));
   return $form;
@@ -440,12 +440,12 @@ function shift_scheduler_change_shift(){
 }
 
 /*
-Define the appearance of the form on the old_duty
-Use this form by adding the return value of drupal_get_form('shift_scheduler_old_duty_form')
+Define the appearance of the form on the old_shift
+Use this form by adding the return value of drupal_get_form('shift_scheduler_old_schedule_form')
 to your page content.
 @param form_state Provided by drupal core
 */
-function shift_scheduler_old_duty_form(&$form_state){
+function shift_scheduler_old_shifts_form(&$form_state){
   //Get a list of all the volunteers
   $options = array();
   $options[0] = ' ';
@@ -458,7 +458,7 @@ function shift_scheduler_old_duty_form(&$form_state){
   $form['volunteer'] = array(
 			  '#type'=>'select',
 			  '#title'=>t('Volunteer'),
-			  '#description'=>t('The volunteer whose duty you would like to review'),
+			  '#description'=>t('The volunteer whose shifts you would like to review'),
 			  '#options'=>$options,
 			  '#default_value'=>$user->uid,
 			  '#required'=>TRUE
@@ -483,30 +483,30 @@ function shift_scheduler_old_duty_form(&$form_state){
 			   '#type' =>'submit',
 			   '#value'=>t('Submit')
 			   );
-  $form['#submit'][] ='shift_scheduler_old_duty_form_submit';
+  $form['#submit'][] ='shift_scheduler_old_shifts_form_submit';
   return $form;
 }
 
 
-function shift_scheduler_old_duty_form_submit($form, &$form_state){
+function shift_scheduler_old_shifts_form_submit($form, &$form_state){
   $fi = $form_state['values'];/*fi = form info*/
   $start_time = mktime(0,0,0, $fi['start_date']['month'], $fi['start_date']['day'], $fi['start_date']['year']);
   $end_time = mktime(0,0,0, $fi['end_date']['month'], $fi['end_date']['day'], $fi['end_date']['year']);
-  $form_state['redirect'] = array('shift_scheduler/old_duty_results', 'uid=' . $fi['volunteer'] .'&' . 'start_time='. $start_time . '&' . 'end_time='.$end_time );
+  $form_state['redirect'] = array('shift_scheduler/old_shifts_results', 'uid=' . $fi['volunteer'] .'&' . 'start_time='. $start_time . '&' . 'end_time='.$end_time );
   
 					       
 }
 
-function shift_scheduler_old_duty(){
-  $page_content =drupal_get_form('shift_scheduler_old_duty_form');
+function shift_scheduler_old_shifts(){
+  $page_content =drupal_get_form('shift_scheduler_old_shifts_form');
   return $page_content;
    
 }
 
 /*
-Define the appearance of the results page for the duty schedule
+Define the appearance of the results page for the shift schedule
  */
-function shift_scheduler_old_duty_results(){
+function shift_scheduler_old_shifts_results(){
   $page_content = '';
   //get the parameters from the URL
   $uid = $_GET['uid'];  
@@ -566,7 +566,7 @@ function shift_scheduler_old_duty_results(){
 /**** ADMINISTRATIVE FEATURES
 
 Everything beyond this point defines administrative features for
-customizing the duty schedule to a particular organization.  For example,
+customizing the shift schedule to a particular organization.  For example,
 these functions will define the pages that allow you to create new slots,
 create default times for each of the slots, rename slots, delete slots,
 deactivate slots, etc.
@@ -848,15 +848,15 @@ function shift_scheduler_menu(){
 					       'access arguments' => array('edit shift schedule'),
 					       'type' => MENU_CALLBACK
 					       );
-  $items['shift_scheduler/old_duty'] = array(
-					   'title' => 'Old duty',
-					   'page callback' => 'shift_scheduler_old_duty',
+  $items['shift_scheduler/old_shifts'] = array(
+					   'title' => 'Old shifts',
+					   'page callback' => 'shift_scheduler_old_shifts',
 					   'access arguments' => array('access shift schedule'),
 					   'type' => MENU_NORMAL_ITEM
 					   );
-  $items['shift_scheduler/old_duty_results']= array(
-						  'title' => 'Old duty',
-						  'page callback' => 'shift_scheduler_old_duty_results',
+  $items['shift_scheduler/old_shifts_results']= array(
+						  'title' => 'Old shifts',
+						  'page callback' => 'shift_scheduler_old_shifts_results',
 						  'access arguments' => array('access shift schedule'),
 						  'type' => MENU_CALLBACK
 						  );
