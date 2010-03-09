@@ -1,0 +1,181 @@
+<?php
+// $Id$
+
+function shift_scheduler_schema() {
+	$schema['shift_scheduler_shifts'] = array(
+	'description' => t('Holds the data for all the shifts taken by members of EST.'),
+	'fields' => array(
+		'shift_id' => array(
+			'description' => t('An arbitrary unique identifier for each shift'),
+			'type' => 'serial',
+			'unsigned' => TRUE,
+			'not null' => TRUE
+		),
+		'start_time' => array(
+			'description' => t('The start time for a shift.'),
+			'type' => 'datetime',
+			'not null' => TRUE
+		),
+		'end_time' => array(
+			'description' => t('The start time for a shift.'),
+			'type' => 'datetime',
+			'not null' => TRUE
+		),
+		'slot_id' => array(
+			'description' => t('The position in the duty crew.'),
+			'type' => 'int',
+			'size' => 'tiny',
+			'not null' => TRUE
+		),
+		'uid' => array(
+			'description' => t('A uid pointing to the volunteer that took the shift'),
+			'type' => 'int',
+			'not null' => FALSE,
+			'unsigned' => TRUE
+		)
+	),
+	'primary key' => array('shift_id')
+	//TODO: figure out a way to index using the start time for fast lookups.  This table is going to get big, and we can't do linear time searches all over the place
+	);//closes schema array
+	$schema['shift_scheduler_slots'] = array(
+	'description' => t('Defines the different slots that must be filled in a work day.'),
+	'fields' => array(
+		'slot_id' => array(
+			'description' => t('An arbitrary unique identifier for each slot'),
+			'type' => 'serial',
+			'unsigned' => TRUE,
+			'not null' => TRUE
+				   ),
+		'display_name' => array(
+			      'description' => t('e.g. Supervisor'),
+			      'type' => 'varchar',
+			      'length' => 255,
+			      'not null' => TRUE,
+			      'default'=>''
+				       ),
+		'status' => array(
+			'description' => t('0 - Active, 1 - Deactivated'),
+			'size' => 'tiny',
+			'type' => 'int',
+			'not null' => FALSE,
+			'unsigned' => TRUE
+				  ),
+			  ),
+	'primary key' => array('slot_id')
+	);//closes the "$schema['shift_scheduler_slots'] = array(" line
+
+	$schema['shift_scheduler_slot_times'] = array(
+	'description' => t('Defines the shifts that are automatically filled in in each slot when days are added to the schedule'),
+	'fields' => array(
+		'slot_time_id' => array(
+			'description' => t('An arbitrary unique identifier for each slot time'),
+			'type' => 'serial',
+			'unsigned' => TRUE,
+			'not null' => TRUE
+				   ),
+		'slot_id' => array(
+			'description' => t('The slot id to which this shift should be added'),
+			'type' => 'int',
+			'size'=> 'tiny',
+			'unsigned' => TRUE,
+			'not null' => TRUE
+				   ),
+	        'start_time' => array(
+			'description' => t('The start time for a shift.'),
+			'type' => 'datetime',
+			'not null' => TRUE
+				      ),
+		'end_time' => array(
+			'description' => t('The start time for a shift.'),
+			'type' => 'datetime',
+			'not null' => TRUE
+				    )
+			  ),
+	'primary key' => array('slot_time_id')
+	 );
+	
+	return $schema;
+}
+
+
+function shift_scheduler_update_6101(){
+  $ret = array();
+  db_change_field($ret, 'shift_scheduler_shifts', 'medic_slot', 'slot_id', array(
+			'description' => t('The position in the duty crew.'),
+			'type' => 'int',
+			'size' => 'tiny',
+			'not null' => TRUE)
+		  );
+  db_create_table($ret, 'shift_scheduler_slots', array(
+	'description' => t('Defines the different slots that must be filled in a work day.'),
+	'fields' => array(
+		'slot_id' => array(
+			'description' => t('An arbitrary unique identifier for each slot'),
+			'type' => 'serial',
+			'unsigned' => TRUE,
+			'not null' => TRUE
+				   ),
+		'display_name' => array(
+			      'description' => t('e.g. Supervisor'),
+			      'type' => 'varchar',
+			      'length' => 255,
+			      'not null' => TRUE,
+			      'default'=>''
+				       ),
+		'status' => array(
+			'description' => t('0 - Active, 0 - Deactivated'),
+			'size' => 'tiny',
+			'type' => 'int',
+			'not null' => FALSE,
+			'unsigned' => TRUE
+				  ),
+			  ),
+	'primary key' => array('slot_id')
+						  )
+	       );
+  db_create_table($ret, 'shift_scheduler_slot_times', array(
+	'description' => t('Defines the shifts that are automatically filled in in each slot when days are added to the schedule'),
+	'fields' => array(
+		 'slot_time_id' => array(
+			'description' => t('An arbitrary unique identifier for each slot time'),
+			'type' => 'serial',
+			'unsigned' => TRUE,
+			'not null' => TRUE
+				   ),
+		'slot_id' => array(
+			'description' => t('The slot id to which this shift should be added'),
+			'type' => 'int',
+			'size'=> 'tiny',
+			'unsigned' => TRUE,
+			'not null' => TRUE
+				   ),
+	        'start_time' => array(
+			'description' => t('The start time for a shift.'),
+			'type' => 'datetime',
+			'not null' => TRUE
+				      ),
+		'end_time' => array(
+			'description' => t('The start time for a shift.'),
+			'type' => 'datetime',
+			'not null' => TRUE
+				    )
+			  ),
+	'primary key' => array('slot_time_id')
+	)
+	);
+}
+
+
+
+//standard functions to create and destroy
+//the tables on install and uninstall
+function shift_scheduler_install() {
+	//create shift_scheduler tables	
+	drupal_install_schema('shift_scheduler');
+}
+
+function shift_scheduler_uninstall(){
+	//drop shift_scheduler talbes
+	drupal_uninstall_schema('shift_scheduler');
+}
+
