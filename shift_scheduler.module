@@ -211,19 +211,20 @@ function shift_scheduler_schedule(){
 //creating a bunch of open shifts at standard times in the schedule table
 function shift_scheduler_create_days_form($form_state){
   $form = array();
-  $form['start date'] = array(
+  $form['start_date'] = array(
 			      '#type' => 'date',
 			      '#title' => t('Start date'),
 			      '#required' => TRUE,
 			      '#description' => t('The first date to be created on the shift schedule.')
 			      );
-  $form['end date'] = array(
+  $form['end_date'] = array(
 			    '#type' => 'date',
 			    '#title' => t('End date'),
 			    '#required' => TRUE,
 			    '#description' => t('The last date to be created on the shift schedule.')
 			    );
   $form['submit'] = array('#type' => 'submit', '#value' => t('Create days'));
+  $form['#submit'][] = 'shift_scheduler_create_days_form_submit';
   return $form;
 
 }
@@ -236,12 +237,12 @@ function shift_scheduler_create_days_form_submit($form, &$form_state){
   $result = db_query('SELECT * FROM {shift_scheduler_slot_times} INNER JOIN {shift_scheduler_slots} ON {shift_scheduler_slot_times}.slot_id={shift_scheduler_slots}.slot_id WHERE {shift_scheduler_slots}.status=%d',0);
   //get start date from form
   //TODO: clean this up to use 'values'
-  $sday = $form_state['clicked_button']['#post']['start_date']['day'];
-  $smon = $form_state['clicked_button']['#post']['start_date']['month'];
-  $syear = $form_state['clicked_button']['#post']['start_date']['year'];
-  $eday = $form_state['clicked_button']['#post']['end_date']['day'];
-  $emon = $form_state['clicked_button']['#post']['end_date']['month'];
-  $eyear = $form_state['clicked_button']['#post']['end_date']['year'];
+  $sday = $form_state['values']['start_date']['day'];
+  $smon = $form_state['values']['start_date']['month'];
+  $syear = $form_state['values']['start_date']['year'];
+  $eday = $form_state['values']['end_date']['day'];
+  $emon = $form_state['values']['end_date']['month'];
+  $eyear = $form_state['values']['end_date']['year'];
   $num_days = (mktime(0,0,0,$emon,$eday,$eyear) -  mktime(0,0,0,$smon,$sday,$syear))/(60*60*24)+1;//total number of days being added
 
   while($slot_time = db_fetch_object($result)){
