@@ -240,7 +240,6 @@ function shift_scheduler_create_days_form_validate($form, &$form_state){
   //If the first shift to be added already exists in the database, say there is an error
   $redundant = db_fetch_object(db_query("SELECT shift_id FROM {shift_scheduler_shifts} WHERE start_time='%s' AND slot_id=%d", date("Y-m-d H:i:00", $start_time),$slot_time->slot_id ));
   if($redundant){
-    dvr('test');
     form_set_error('start_date',t('Creating days failed because the first day you selected has already been created.'));
   }
 }
