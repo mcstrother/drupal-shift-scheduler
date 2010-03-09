@@ -132,7 +132,7 @@ function shift_scheduler_schedule(){
   
   $query = "SELECT uid, start_time, end_time, {shift_scheduler_shifts}.slot_id, shift_id FROM " .
     "{shift_scheduler_shifts} INNER JOIN {shift_scheduler_slots} ON {shift_scheduler_shifts}.slot_id={shift_scheduler_slots}.slot_id  WHERE start_time > '%s' AND {shift_scheduler_slots}.status=%d " .
-    "ORDER BY {shift_scheduler_shifts}.start_time, {shift_scheduler_shifts}.slot_id";//TODO: modify to only display when slot is active (probably needs a join)
+    "ORDER BY {shift_scheduler_shifts}.start_time, {shift_scheduler_shifts}.slot_id";
   $queryResult = db_query($query, date("Y-m-d H:i:s", $midnight), 0);
   
   $midnight = $midnight + 60*60*24;//move midnight to midnight on the day after the first day to be displayed
@@ -233,7 +233,7 @@ function shift_scheduler_create_days_form($form_state){
 Create new days and fill with the defaut shifts
 */
 function shift_scheduler_create_days_form_submit($form, &$form_state){
-  $result = db_query('SELECT * FROM {shift_scheduler_slot_times}');//TODO: modify to check for active slots only (efficiency only, hack works fine now)
+  $result = db_query('SELECT * FROM {shift_scheduler_slot_times} INNER JOIN {shift_scheduler_slots} ON {shift_scheduler_slot_times}.slot_id={shift_scheduler_slots}.slot_id WHERE {shift_scheduler_slots}.status=%d',0);
   //get start date from form
   //TODO: clean this up to use 'values'
   $sday = $form_state['clicked_button']['#post']['start_date']['day'];
@@ -245,12 +245,6 @@ function shift_scheduler_create_days_form_submit($form, &$form_state){
   $num_days = (mktime(0,0,0,$emon,$eday,$eyear) -  mktime(0,0,0,$smon,$sday,$syear))/(60*60*24)+1;//total number of days being added
 
   while($slot_time = db_fetch_object($result)){
-    //TODO: delete the following and replace with a select/join in original query
-    //check that the slot_time is for a slot that is active
-    $slot_row = db_fetch_object(db_query('SELECT status FROM {shift_scheduler_slots} WHERE slot_id=%d', $slot_time->slot_id));
-    if($slot_row->status!=0){
-      continue;
-    }
     for($i = 0; $i < $num_days; $i++){
       $start_time = mktime((int)($slot_time->start_time[11].$slot_time->start_time[12]), (int)($slot_time->start_time[14].$slot_time->start_time[15]), 0, $smon, $sday+$i, $syear);
       $end_time = mktime((int)($slot_time->end_time[11].$slot_time->end_time[12]), (int)($slot_time->end_time[14].$slot_time->end_time[15]), 0, $smon, $sday+$i, $syear);
