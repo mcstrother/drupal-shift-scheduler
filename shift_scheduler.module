@@ -195,7 +195,7 @@ function shift_scheduler_schedule(){
       }  
       $shift_text = l($shift_text, 'shift_scheduler/change_shift',$options);
     }//if claiming shifts is enabled and the shift is open, allow the user to claim it
-    elseif((variable_get('shift_scheduler_claim_open_shifts', 0) ==1) && (($row->uid==NULL)||($row->uid==0))){
+    elseif(($user->uid !=0) &&(variable_get('shift_scheduler_claim_open_shifts', 0) ==1) && (($row->uid==NULL)||($row->uid==0))){
       $options = array(
 		       'query' => array(
 					'uid' => $user->uid,
@@ -207,7 +207,7 @@ function shift_scheduler_schedule(){
 					
       $shift_text = l($shift_text,'shift_scheduler', $options);
     }//if relinquishing shifts is enabled and the shift is the user's, allow user to relinquish it
-    elseif(variable_get('shift_scheduler_relinquish_shifts', 0)==1 && $row->uid==$user->uid){
+    elseif(($user->uid != 0) &&variable_get('shift_scheduler_relinquish_shifts', 0)==1 && $row->uid==$user->uid){
       $options = array(
 		       'query' => array(
 					'shift_id' => $row->shift_id,
