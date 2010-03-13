@@ -120,6 +120,10 @@ function shift_scheduler_schedule(){
   $has_content = FALSE;
   global $user; //get access to global variable representing the current user
   
+  //TODO: if query claim, user id, shift id, and userid == userid, then let the user claim the shift
+  if($_GET['claim'] && $_GET['uid'] == $user->uid && $_GET['shift_id']){
+    db_query('UPDATE {shift_scheduler_shifts} SET uid=%d WHERE shift_id=%d', $user->uid, (int)$_GET['shift_id']);
+  } 
   //get the shifts to display
   date_default_timezone_set('CST');
   $today = getdate();
@@ -179,10 +183,27 @@ function shift_scheduler_schedule(){
       $options = array('query' => 'shift=' . $row->shift_id);
       if ($name=="Open Shift"){
 	$options['attributes'] = array('style' => 'color: #FF0000'); //make the link red
-
+      
       }  
       $shift_text = l($shift_text, 'shift_scheduler/change_shift',$options);
+    }//if claiming shifts is enabled and the link is open, allow the user to claim it
+    elseif((variable_get('shift_scheduler_claim_open_shifts', FALSE) ==1) && (($row->uid==NULL)||($row->uid==0))){
+      $options = array(
+		       'query' => array(
+					'uid' => $user->uid,
+					'shift_id' => $row->shift_id,
+					'claim' => TRUE
+					),
+		       'attributes' => array('style' => 'color: #FF0000')
+		       );
+					
+      $shift_text = l($shift_text,'shift_scheduler', $options);
     }
+    /*    dvr(variable_get('shift_scheduler_claim_open_shifts', FALSE) ==1);
+    dvr($row->uid ==0);
+    dvr(($row->uid ==0) && (variable_get('shift_scheduler_claim_open_shifts', FALSE) ==1));
+    dvr('********');*/
+
     
     if($name=="Open Shift"){//if it's still an open shift, make it red and bold
       $shift_text = '<b><font  color="Red">' . $shift_text .'</font></b>';
@@ -817,6 +838,33 @@ function shift_scheduler_admin_default_shifts_submit($form, &$form_state){
 
 }
 
+function shift_scheduler_configure(){
+  if(!variable_get('shift_scheduler_claim_open_shifts', FALSE)){
+    variable_set('shift_scheduler_claim_open_shifts', 0); 
+  }
+  return drupal_get_form('shift_scheduler_configure_form');
+}
+
+function shift_scheduler_configure_form(&$form_state){
+  $form = array();
+  $form['claim_open_shifts'] = array(
+				     '#name'=> 'claim_open_shifts',
+				     '#type' => 'radios',
+				     '#title' => t('Claim Open Shifts'),
+				     '#description' => t('If enabled, any authenticated user with access to the shift schedule can claim any open shift on the schedule.'),
+				     '#default_value' => variable_get('shift_scheduler_claim_open_shifts', FALSE),
+				     '#options' => array(t('Disabled'), t('Enabled'))
+				     );
+  
+  $form['submit'] = array('#type' => 'submit', '#value' => t('Update'));  
+  $form['#submit'][] = 'shift_scheduler_configure_submit';
+  return $form;
+}
+
+function shift_scheduler_configure_submit($form, &$form_state){
+  variable_set('shift_scheduler_claim_open_shifts', $form_state['values']['claim_open_shifts']);
+}
+
 /*
 Implementaiton of hook_menu
  */
@@ -854,20 +902,27 @@ function shift_scheduler_menu(){
 						  );
   //TODO: find a way to get the following as a normal menu item 
   $items['admin/settings/shift_scheduler']= array(
-						'title' => 'Shift Scheduler',
+						  'title' => t('Shift Scheduler'),
 						'description' => t('Administer the slots and default shifts on the shift schedule.'),
 						'access arguments' => array('administer site configuration', 'administer shift_scheduler'),
 						'type' => MENU_NORMAL_ITEM,
 						'page callback' => 'shift_scheduler_admin_slots',
 						);
   $items['admin/settings/shift_scheduler/slot'] = array(
-					      'title' => 'Edit slots',
+							'title' => t('Edit slots'),
 					      'page callback' => 'shift_scheduler_admin_slots',
 					      'access arguments' => array('administer shift_scheduler'),
 					      'type' => MENU_NORMAL_ITEM
-					      );
+							);
+  
+  $items['admin/settings/shift_scheduler/configure'] = array(
+							     'title' => t('Configure Shift Scheduler'),
+							     'page callback' => 'shift_scheduler_configure',
+							     'access arguments' => array('administer shift_scheduler'),
+							     'type' => MENU_NORMAL_ITEM
+							     );
   $items['admin/settings/shift_scheduler/default_shifts']= array(
-							       'title' => 'Edit default shifts',
+								 'title' => t('Edit default shifts'),
 							       'page callback' => 'shift_scheduler_admin_default_shifts',
 							       'access arguments' => array('administer shift_scheduler'),
 							       'type' => MENU_CALLBACK
