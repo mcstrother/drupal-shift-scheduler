@@ -120,10 +120,11 @@ function shift_scheduler_schedule(){
   $has_content = FALSE;
   global $user; //get access to global variable representing the current user
   
-  //TODO: if query claim, user id, shift id, and userid == userid, then let the user claim the shift
-  if($_GET['claim'] && $_GET['uid'] == $user->uid && $_GET['shift_id']){
+  //handle claiming open shifts
+  if($_GET['claim'] && $_GET['uid'] == $user->uid && $_GET['shift_id'] && variable_get('shift_scheduler_claim_open_shifts', FALSE)){
     db_query('UPDATE {shift_scheduler_shifts} SET uid=%d WHERE shift_id=%d', $user->uid, (int)$_GET['shift_id']);
-  } 
+  }
+ 
   //get the shifts to display
   date_default_timezone_set('CST');
   $today = getdate();
@@ -199,10 +200,6 @@ function shift_scheduler_schedule(){
 					
       $shift_text = l($shift_text,'shift_scheduler', $options);
     }
-    /*    dvr(variable_get('shift_scheduler_claim_open_shifts', FALSE) ==1);
-    dvr($row->uid ==0);
-    dvr(($row->uid ==0) && (variable_get('shift_scheduler_claim_open_shifts', FALSE) ==1));
-    dvr('********');*/
 
     
     if($name=="Open Shift"){//if it's still an open shift, make it red and bold
