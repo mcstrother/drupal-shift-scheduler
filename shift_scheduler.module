@@ -856,7 +856,7 @@ function shift_scheduler_menu(){
   $items['admin/settings/shift_scheduler']= array(
 						'title' => 'Shift Scheduler',
 						'description' => t('Administer the slots and default shifts on the shift schedule.'),
-						'access arguemnts' => array('administer site configuration', 'administer shift_scheduler'),
+						'access arguments' => array('administer site configuration', 'administer shift_scheduler'),
 						'type' => MENU_NORMAL_ITEM,
 						'page callback' => 'shift_scheduler_admin_slots',
 						);
@@ -870,7 +870,7 @@ function shift_scheduler_menu(){
 							       'title' => 'Edit default shifts',
 							       'page callback' => 'shift_scheduler_admin_default_shifts',
 							       'access arguments' => array('administer shift_scheduler'),
-							       'type' => MENU_CALLBACk
+							       'type' => MENU_CALLBACK
 							       );
   return $items;
 }
