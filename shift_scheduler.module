@@ -480,22 +480,39 @@ to your page content.
 */
 function shift_scheduler_old_shifts_form(&$form_state){
   //Get a list of all the volunteers
-  $options = array();
-  $options[0] = ' ';
-  $options_query = "SELECT uid, name FROM {users} WHERE uid > 1 ORDER BY name";
-  $options_result = db_query($options_query);
-  while( $options_row = db_fetch_object($options_result) ){
-    $options[$options_row->uid] = $options_row->name;
+  global $user;
+  $volunteer_options = array();
+  $volunteer_options[0] = ' ';
+  $volunteer_options_query = "SELECT uid, name FROM {users} WHERE uid > 1 ORDER BY name";
+  $volunteer_options_result = db_query($volunteer_options_query);
+  while( $volunteer_options_row = db_fetch_object($volunteer_options_result) ){
+    $volunteer_options[$volunteer_options_row->uid] = $volunteer_options_row->name;
+  }
+  //Get a list of slots and save as options
+  $slot_options = array();
+  $slot_options[-1] = 'All';
+  $slot_options_query = "SELECT slot_id, display_name FROM {shift_scheduler_slots} WHERE status=%d";
+  $slot_options_result = db_query($slot_options_query);
+  while($slot_options_row = db_fetch_object($slot_options_result)){
+    $slot_options[$slot_options_row->slot_id] = $slot_options_row->display_name;
   }
   $form = array();
   $form['volunteer'] = array(
 			  '#type'=>'select',
 			  '#title'=>t('Volunteer'),
 			  '#description'=>t('The volunteer whose shifts you would like to review'),
-			  '#options'=>$options,
+			  '#options'=>$volunteer_options,
 			  '#default_value'=>$user->uid,
 			  '#required'=>TRUE
 			  );//$user is a global variable that refers to the currently logged in user
+  $form['slot'] = array(
+			'#type' => 'select',
+			'#title' => t('Slot'),
+			'#description' => t('Show only shifts taken in this slot.  Select "All" to get all shifts.'),
+			'#options' => $slot_options,
+			'#default_value' => -1,
+			'#required' => TRUE
+			);
   $form['start_date'] = array(
 			       '#type' => 'date',
 			       '#title' =>t('Start date'),
@@ -525,7 +542,7 @@ function shift_scheduler_old_shifts_form_submit($form, &$form_state){
   $fi = $form_state['values'];/*fi = form info*/
   $start_time = mktime(0,0,0, $fi['start_date']['month'], $fi['start_date']['day'], $fi['start_date']['year']);
   $end_time = mktime(0,0,0, $fi['end_date']['month'], $fi['end_date']['day'], $fi['end_date']['year']);
-  $form_state['redirect'] = array('shift_scheduler/old_shifts_results', 'uid=' . $fi['volunteer'] .'&' . 'start_time='. $start_time . '&' . 'end_time='.$end_time );	       
+  $form_state['redirect'] = array('shift_scheduler/old_shifts_results', 'uid=' . $fi['volunteer'] .'&' . 'start_time='. $start_time . '&' . 'end_time='.$end_time .'&' . 'slot_id='. $form_state['values']['slot'] );	       
 }
 
 function shift_scheduler_old_shifts(){
@@ -539,18 +556,32 @@ Define the appearance of the results page for the shift schedule
 function shift_scheduler_old_shifts_results(){
   $page_content = '';
   //get the parameters from the URL
-  $uid = $_GET['uid'];  
+  $uid = $_GET['uid'];
   $start_time = $_GET['start_time'];
   $end_time = $_GET['end_time'];
   //query the datebase
-  $result = db_query("SELECT {shift_scheduler_shifts}.slot_id, start_time, end_time, display_name \n " .
-		     "FROM {shift_scheduler_shifts} INNER JOIN {shift_scheduler_slots} ON {shift_scheduler_slots}.slot_id={shift_scheduler_shifts}.slot_id \n " .
-		     "WHERE uid=%d AND (start_time>'%s' AND end_time<'%s') \n " .
-		     "ORDER BY start_time \n "
-		     , 
-		     $uid,
-		     date( 'Y-m-d H:i:s', $start_time), 
-		     date( 'Y-m-d H:i:s', $end_time) );
+  if($_GET['slot_id']==-1){
+    $result = db_query("SELECT {shift_scheduler_shifts}.slot_id, start_time, end_time, display_name \n " .
+		       "FROM {shift_scheduler_shifts} INNER JOIN {shift_scheduler_slots} ON {shift_scheduler_slots}.slot_id={shift_scheduler_shifts}.slot_id \n " .
+		       "WHERE uid=%d AND (start_time>'%s' AND end_time<'%s') \n " .
+		       "ORDER BY start_time \n "
+		       , 
+		       $uid,
+		       date( 'Y-m-d H:i:s', $start_time), 
+		       date( 'Y-m-d H:i:s', $end_time)
+		       );
+  }
+  else{
+    $result = db_query("SELECT {shift_scheduler_shifts}.slot_id, start_time, end_time, display_name \n " .
+		       "FROM {shift_scheduler_shifts} INNER JOIN {shift_scheduler_slots} ON {shift_scheduler_slots}.slot_id={shift_scheduler_shifts}.slot_id \n " .
+		       "WHERE uid=%d AND (start_time>'%s' AND end_time<'%s')  AND {shift_scheduler_shifts}.slot_id=%d\n " .
+		       "ORDER BY start_time \n "
+		       , 
+		       $uid,
+		       date( 'Y-m-d H:i:s', $start_time), 
+		       date( 'Y-m-d H:i:s', $end_time),
+		       $_GET['slot_id']);
+  }
   
   $total_duty = 0;//counter to count the total amount of duty taken
   //write the results of the database query out into a table
