@@ -32,7 +32,7 @@ Used as a subroutine to shift_scheduler_schedule()
 */
 function _write_date_row(&$page_content, $slot_cells, $timestamp, $slot_ids){
   $page_content .= '<tr> <td valign="center" class="table-label">';
-  $page_content .='<b>' . date('l n/j/Y', $timestamp) . '</b> </td>' ;
+  $page_content .='<b><p>' . date('l', $timestamp) . '</p><p>'. date('n/j/Y', $timestamp) . '</p></b></td>' ;
   foreach($slot_ids as $slot_id) {
     $page_content .= '<td>' . $slot_cells[$slot_id] . '</ td>';
   }
