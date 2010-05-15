@@ -112,50 +112,76 @@ function _schedule_format_name($uid){
 }
 
 /*
-@param name A string representing the name of the volunteer
-@param time A string representing the time of the shift
+Subroutine to format the display and linking
+of a single shift on the shift schedule.
+Used only in shift_scheduler_schedule.
+
+@param uid The uid of the user filling the shift
+@param shift_id The id of the shift
+@param start_time_t The start time of the shift in seconds since unix epoch
+@param start_time_t The end time of the shift in seconds since unix epoch
 @return shift_text A string with the name and time combined properly and set to be links
  */
-function _schedule_format_shift_text($name, $time){
-  $shift_text = $name . ' ' . $time;
+function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t){
+  //get the volunteer's name
+  $name = "Open Shift";
+  if($uid){
+    $name = _schedule_format_name($uid);
+  }
+  
+  $time = date('Hi', $start_time_t) . ' -  ' . date('Hi', $end_time_t);
+  
   //If the user has the correct permissions, and the shift didn't occur too far in the past,
   //make the text into a link so it can be edited
   if(user_access('edit shift schedule') && $start_time_t > (time() - 60*60*4)){ 
-    $options = array('query' => 'shift=' . $row->shift_id);
+    $options = array('query' => 'shift=' . $shift_id);
     if ($name=="Open Shift"){
       $options['attributes'] = array('style' => 'color: #FF0000'); //make the link red
       
-    }  
-    $shift_text = l($shift_text, 'shift_scheduler/change_shift',$options);
+    }
+    $link_page = 'shift_scheduler/change_shift';
   }//if claiming shifts is enabled and the shift is open, allow the user to claim it
-  elseif(($user->uid !=0) &&(variable_get('shift_scheduler_claim_open_shifts', 0) ==1) && (($row->uid==NULL)||($row->uid==0))){
+  elseif(($user->uid !=0) &&(variable_get('shift_scheduler_claim_open_shifts', 0) ==1) && (($uid==NULL)||($uid==0))){
     $options = array(
 		     'query' => array(
 				      'uid' => $user->uid,
-				      'shift_id' => $row->shift_id,
+				      'shift_id' => $shift_id,
 				      'claim' => TRUE
 				      ),
 		     'attributes' => array('style' => 'color: #FF0000')
 		     );
-    
-    $shift_text = l($shift_text,'shift_scheduler', $options);
+    $link_page = 'shift_scheduler';
   }//if relinquishing shifts is enabled and the shift is the user's, allow user to relinquish it
-  elseif(($user->uid != 0) && variable_get('shift_scheduler_relinquish_shifts', 0)==1 && $row->uid==$user->uid){
+  elseif(($user->uid != 0) && variable_get('shift_scheduler_relinquish_shifts', 0)==1 && $uid==$user->uid){
     $options = array(
 		     'query' => array(
-				      'shift_id' => $row->shift_id,
+				      'shift_id' => $shift_id,
 				      'relinquish' => TRUE
 				      )
 		     );
-    $shift_text = l($shift_text, 'shift_scheduler', $options);
-    
+    $link_page = 'shift_scheduler';
   }
-  
-  
+
+  if(variable_get('shift_scheduler_link_to_profile', FALSE)){
+    if($uid){
+      $name = l($name, 'user' . '/' . $uid);
+    }
+    if($link_page && $options){
+      $time = l($time, $link_page, $options);
+    }
+    $shift_text = $name . ' ' . $time;
+  }
+  else{
+    $shift_text = $name . ' ' . $time;
+    if ($link_page && $options){
+      $shift_text = l($shift_text, $link_page, $options);
+    }
+  }
+
   if($name=="Open Shift"){//if it's still an open shift, make it red and bold
     $shift_text = '<b><font  color="Red">' . $shift_text .'</font></b>';
   }
-  elseif($row->uid==$user->uid){
+  elseif($uid==$user->uid){
     $shift_text = '<font style="BACKGROUND-COLOR: #254117">' . $shift_text . '</font>'; 
   }
 
@@ -230,12 +256,8 @@ function shift_scheduler_schedule(){
 	$volunteer_cells[$slot_id] = '';
       }
     }
-    //get the volunteer's name
-    $name = "Open Shift";
-    if($row->uid){
-      $name = _schedule_format_name($row->uid);
-    }
-    $shift_text = _schedule_format_shift_text($name, date('Hi', $start_time_t) . ' -  ' . date('Hi', $end_time_t));
+    
+    $shift_text = _schedule_format_shift_text($row->uid, $row->shift_id, $start_time_t, $end_time_t);
     
     $volunteer_cells[$row->slot_id] .= '<p> ' . $shift_text .  "</p>";
     
