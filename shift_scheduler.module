@@ -111,6 +111,57 @@ function _schedule_format_name($uid){
   return $display_name;
 }
 
+/*
+@param name A string representing the name of the volunteer
+@param time A string representing the time of the shift
+@return shift_text A string with the name and time combined properly and set to be links
+ */
+function _schedule_format_shift_text($name, $time){
+  $shift_text = $name . ' ' . $time;
+  //If the user has the correct permissions, and the shift didn't occur too far in the past,
+  //make the text into a link so it can be edited
+  if(user_access('edit shift schedule') && $start_time_t > (time() - 60*60*4)){ 
+    $options = array('query' => 'shift=' . $row->shift_id);
+    if ($name=="Open Shift"){
+      $options['attributes'] = array('style' => 'color: #FF0000'); //make the link red
+      
+    }  
+    $shift_text = l($shift_text, 'shift_scheduler/change_shift',$options);
+  }//if claiming shifts is enabled and the shift is open, allow the user to claim it
+  elseif(($user->uid !=0) &&(variable_get('shift_scheduler_claim_open_shifts', 0) ==1) && (($row->uid==NULL)||($row->uid==0))){
+    $options = array(
+		     'query' => array(
+				      'uid' => $user->uid,
+				      'shift_id' => $row->shift_id,
+				      'claim' => TRUE
+				      ),
+		     'attributes' => array('style' => 'color: #FF0000')
+		     );
+    
+    $shift_text = l($shift_text,'shift_scheduler', $options);
+  }//if relinquishing shifts is enabled and the shift is the user's, allow user to relinquish it
+  elseif(($user->uid != 0) && variable_get('shift_scheduler_relinquish_shifts', 0)==1 && $row->uid==$user->uid){
+    $options = array(
+		     'query' => array(
+				      'shift_id' => $row->shift_id,
+				      'relinquish' => TRUE
+				      )
+		     );
+    $shift_text = l($shift_text, 'shift_scheduler', $options);
+    
+  }
+  
+  
+  if($name=="Open Shift"){//if it's still an open shift, make it red and bold
+    $shift_text = '<b><font  color="Red">' . $shift_text .'</font></b>';
+  }
+  elseif($row->uid==$user->uid){
+    $shift_text = '<font style="BACKGROUND-COLOR: #254117">' . $shift_text . '</font>'; 
+  }
+
+  return $shift_text;
+}
+
 /*Defines how the shift schedule should be displayed
 Only used as a callback in shift_scheduler_menu
 */
@@ -184,47 +235,8 @@ function shift_scheduler_schedule(){
     if($row->uid){
       $name = _schedule_format_name($row->uid);
     }
-    $shift_text = $name . ' ' . date('Hi', $start_time_t) . ' -  ' . date('Hi', $end_time_t);
-    //If the user has the correct permissions, and the shift didn't occur too far in the past,
-    //make the text into a link so it can be edited
-    if(user_access('edit shift schedule') && $start_time_t > (time() - 60*60*4)){ 
-      $options = array('query' => 'shift=' . $row->shift_id);
-      if ($name=="Open Shift"){
-	$options['attributes'] = array('style' => 'color: #FF0000'); //make the link red
-      
-      }  
-      $shift_text = l($shift_text, 'shift_scheduler/change_shift',$options);
-    }//if claiming shifts is enabled and the shift is open, allow the user to claim it
-    elseif(($user->uid !=0) &&(variable_get('shift_scheduler_claim_open_shifts', 0) ==1) && (($row->uid==NULL)||($row->uid==0))){
-      $options = array(
-		       'query' => array(
-					'uid' => $user->uid,
-					'shift_id' => $row->shift_id,
-					'claim' => TRUE
-					),
-		       'attributes' => array('style' => 'color: #FF0000')
-		       );
-					
-      $shift_text = l($shift_text,'shift_scheduler', $options);
-    }//if relinquishing shifts is enabled and the shift is the user's, allow user to relinquish it
-    elseif(($user->uid != 0) &&variable_get('shift_scheduler_relinquish_shifts', 0)==1 && $row->uid==$user->uid){
-      $options = array(
-		       'query' => array(
-					'shift_id' => $row->shift_id,
-					'relinquish' => TRUE
-					)
-		       );
-      $shift_text = l($shift_text, 'shift_scheduler', $options);
-					
-    }
-
+    $shift_text = _schedule_format_shift_text($name, date('Hi', $start_time_t) . ' -  ' . date('Hi', $end_time_t));
     
-    if($name=="Open Shift"){//if it's still an open shift, make it red and bold
-      $shift_text = '<b><font  color="Red">' . $shift_text .'</font></b>';
-    }
-    elseif($row->uid==$user->uid){
-      $shift_text = '<font style="BACKGROUND-COLOR: #254117">' . $shift_text . '</font>'; 
-    }
     $volunteer_cells[$row->slot_id] .= '<p> ' . $shift_text .  "</p>";
     
     
