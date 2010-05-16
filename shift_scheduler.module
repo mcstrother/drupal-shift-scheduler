@@ -693,6 +693,7 @@ function shift_scheduler_admin_slot_form(){
     $row = db_fetch_object(db_query("SELECT * FROM {shift_scheduler_slots} WHERE slot_id=%d", $slot_id));
     //display the edit slot form
     $form['name'] = array(
+			  '#title' => t('Slot name'),
 			  '#type' => 'textfield',
 			  '#size' => 32,
 			  '#maxlength' => 64,
