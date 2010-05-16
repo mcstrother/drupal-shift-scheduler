@@ -211,7 +211,7 @@ function shift_scheduler_update_6200(){
 							    'primary key' => array('slot_id')
 							    )
 		  );
-  db_change_field($ret, 'shift_scheduler_shifts', 'uid', 'uid', 'uid' => array(
+  db_change_field($ret, 'shift_scheduler_shifts', 'uid', 'uid', 'uid', array(
 			'description' => t('A uid pointing to the volunteer that took the shift'),
 			'type' => 'int',
 			'not null' => FALSE,
@@ -229,6 +229,6 @@ function shift_scheduler_install() {
 
 function shift_scheduler_uninstall(){
 	//drop shift_scheduler talbes
-	drupal_uninstall_schema('shift_scheduler');
+  drupal_uninstall_schema('shift_scheduler');
 }
 
