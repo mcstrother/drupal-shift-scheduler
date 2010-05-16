@@ -801,7 +801,7 @@ function shift_scheduler_admin_default_shifts_form(&$form_state){
 				);
   $i =1;
   while($row = db_fetch_object($result)){
-    $form [$i-1] = array(
+    $form[$i-1] = array(
 		     '#type' => 'item',
 		     '#title' => t('Default Shift ' . $i),
 		     '#tree' => TRUE

@@ -31,7 +31,7 @@ function shift_scheduler_schema() {
 			'description' => t('A uid pointing to the volunteer that took the shift'),
 			'type' => 'int',
 			'not null' => FALSE,
-			'unsigned' => TRUE
+			'unsigned' => FALSE
 		)
 	),
 	'primary key' => array('shift_id')
@@ -93,7 +93,28 @@ function shift_scheduler_schema() {
 			  ),
 	'primary key' => array('slot_time_id')
 	 );
-	
+
+	$schema['shift_scheduler_slot_roles'] = array(
+	'description' => t('Defines the roles that are elligible to fill each slot.'),
+	'fields' => array(
+		 'slot_id' => array(
+			  'description' => t('The slot id of the slot for which the role is eligible'),
+			  'type' => 'int',
+			  'size' => 'tiny',
+			  'unsigned' => TRUE,
+			  'not null' => TRUE
+				    ),
+		 'rid' => array(
+			  'description' => t('The role ide of the role that is elligible to fill the slot.'),
+			  'type' => 'int',
+			  'unsigned' => TRUE,
+			  'not null' => TRUE
+				)
+			  ),
+	'primary key' => array('slot_id')
+						      );
+
+
 	return $schema;
 }
 
@@ -165,6 +186,38 @@ function shift_scheduler_update_6101(){
 	);
 }
 
+function shift_scheduler_update_6200(){
+  
+  $ret = array();
+
+
+  db_create_table($ret, 'shift_scheduler_slot_roles', array(
+							    'description' => t('Defines the roles that are elligible to fill each slot.'),
+							    'fields' => array(
+									      'slot_id' => array(
+												 'description' => t('The slot id of the slot for which the role is eligible'),
+												 'type' => 'int',
+												 'size' => 'tiny',
+												 'unsigned' => TRUE,
+												 'not null' => TRUE
+												 ),
+									      'rid' => array(
+											     'description' => t('The role ide of the role that is elligible to fill the slot.'),
+											     'type' => 'int',
+											     'unsigned' => TRUE,
+											     'not null' => TRUE
+											     )
+									      ),
+							    'primary key' => array('slot_id')
+							    )
+		  );
+  db_change_field($ret, 'shift_scheduler_shifts', 'uid', 'uid', 'uid' => array(
+			'description' => t('A uid pointing to the volunteer that took the shift'),
+			'type' => 'int',
+			'not null' => FALSE,
+			'unsigned' => FALSE));
+  
+}
 
 
 //standard functions to create and destroy
