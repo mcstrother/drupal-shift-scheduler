@@ -111,7 +111,7 @@ function shift_scheduler_schema() {
 			  'not null' => TRUE
 				)
 			  ),
-	'primary key' => array('slot_id')
+	'primary key' => array('slot_id', 'rid')
 						      );
 
 
@@ -208,7 +208,7 @@ function shift_scheduler_update_6200(){
 											     'not null' => TRUE
 											     )
 									      ),
-							    'primary key' => array('slot_id')
+							    'primary key' => array('slot_id','rid')
 							    )
 		  );
   db_change_field($ret, 'shift_scheduler_shifts', 'uid', 'uid', array(
