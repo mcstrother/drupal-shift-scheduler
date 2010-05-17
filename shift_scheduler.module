@@ -123,6 +123,7 @@ Used only in shift_scheduler_schedule.
 @return shift_text A string with the name and time combined properly and set to be links
  */
 function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t){
+  global $user;
   //get the volunteer's name
   $name = "Open Shift";
   if($uid){
@@ -141,18 +142,23 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
     }
     $link_page = 'shift_scheduler/change_shift';
   }//if claiming shifts is enabled and the shift is open, allow the user to claim it
-  elseif(($user->uid !=0) &&(variable_get('shift_scheduler_claim_open_shifts', 0) ==1) && (($uid==NULL)||($uid==0))){
-    $options = array(
-		     'query' => array(
-				      'uid' => $user->uid,
-				      'shift_id' => $shift_id,
-				      'claim' => TRUE
-				      ),
-		     'attributes' => array('style' => 'color: #FF0000')
-		     );
-    $link_page = 'shift_scheduler';
+  elseif(($user->uid !=0) &&(variable_get('shift_scheduler_claim_open_shifts', 0) ==1) && (($uid==NULL)||($uid==0)) && $start_time_t > (time() - 60*60*4)){
+    //check to see if user has proper role to be eligible to run in the slot
+    $shift_info = db_fetch_object(db_query("SELECT slot_id FROM {shift_scheduler_shifts} WHERE shift_id = %d", (int)$_GET['shift_id']));
+    if(db_fetch_object(db_query("SELECT {users}.uid, {users}.name, {users_roles}.rid FROM {users} INNER JOIN {users_roles} ON {users_roles}.uid = {users}.uid INNER JOIN {shift_scheduler_slot_roles} ON {users_roles}.rid = {shift_scheduler_slot_roles}.rid WHERE {shift_scheduler_slot_roles}.slot_id = %d AND {users}.uid = %d", $shift_info->slot_id, $user->uid))){
+      $options = array(
+		       'query' => array(
+					'uid' => $user->uid,
+					'shift_id' => $shift_id,
+					'claim' => TRUE
+					),
+		       'attributes' => array('style' => 'color: #FF0000')
+		       );
+      $link_page = 'shift_scheduler';
+    }
   }//if relinquishing shifts is enabled and the shift is the user's, allow user to relinquish it
-  elseif(($user->uid != 0) && variable_get('shift_scheduler_relinquish_shifts', 0)==1 && $uid==$user->uid){
+  elseif(($user->uid != 0) && variable_get('shift_scheduler_relinquish_shifts', 0)==1 && $uid==$user->uid && $start_time_t > (time() - 60*60*4 )){
+
     $options = array(
 		     'query' => array(
 				      'shift_id' => $shift_id,
@@ -196,10 +202,15 @@ function shift_scheduler_schedule(){
   $page_content .= drupal_get_form('shift_scheduler_old_schedule_form');
   $has_content = FALSE;
   global $user; //get access to global variable representing the current user
-  
+
   //handle claiming open shifts
   if($_GET['claim'] && $_GET['uid'] == $user->uid && $_GET['shift_id'] && variable_get('shift_scheduler_claim_open_shifts', FALSE)){
-    db_query('UPDATE {shift_scheduler_shifts} SET uid=%d WHERE shift_id=%d', $user->uid, (int)$_GET['shift_id']);
+    //if the user has the right role, allow him to claim the shift
+    $shift_info = db_fetch_object(db_query("SELECT slot_id FROM {shift_scheduler_shifts} WHERE shift_id = %d", (int)$_GET['shift_id']));
+    if(db_fetch_object(db_query("SELECT {users}.uid, {users}.name, {users_roles}.rid FROM {users} INNER JOIN {users_roles} ON {users_roles}.uid = {users}.uid INNER JOIN {shift_scheduler_slot_roles} ON {users_roles}.rid = {shift_scheduler_slot_roles}.rid WHERE {shift_scheduler_slot_roles}.slot_id = %d AND {users}.uid = %d", $shift_info->slot_id, $user->uid))){
+      db_query('UPDATE {shift_scheduler_shifts} SET uid=%d WHERE shift_id=%d', $user->uid, (int)$_GET['shift_id']);
+    }
+    
   }//handle relinquishing shifts
   elseif($_GET['relinquish'] && $_GET['shift_id'] && variable_get('shift_scheduler_relinquish_shifts', FALSE)){
     $shift_info = db_fetch_object(db_query('SELECT uid FROM {shift_scheduler_shifts} WHERE shift_id=%d', $_GET['shift_id']));
