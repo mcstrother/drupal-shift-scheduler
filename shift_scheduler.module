@@ -368,8 +368,8 @@ function shift_scheduler_change_shift_form(&$form_state){
   //Get a list of volunteers who are eligible to take this shift
   $options = array();
   $options[0] = ' ';
-  $options_query = "SELECT uid, name FROM {users} WHERE uid > 1 AND status = 1 ORDER BY name";
-  $options_result = db_query($options_query);
+  $options_query = "SELECT users.uid, users.name, users_roles.rid FROM users INNER JOIN users_roles ON users_roles.uid = users.uid INNER JOIN shift_scheduler_slot_roles ON users_roles.rid = shift_scheduler_slot_roles.rid WHERE shift_scheduler_slot_roles.slot_id = %d";
+  $options_result = db_query($options_query, $shift_info->slot_id);
   while( $options_row = db_fetch_object($options_result) ){
     $options[$options_row->uid] = $options_row->name;
   }
