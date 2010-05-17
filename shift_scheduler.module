@@ -716,6 +716,15 @@ function shift_scheduler_admin_slot_form(){
 			    '#default_value' => $row->status,
 			    '#options' => array(t('Active'), t('Deactivated')),
 			    );
+    $instructions = 'In order for a user to take a shift in a particular slot, the user must be'.
+      'assinged a role that is eligible for that slot.  The roles  used are the same roles that drupal'.
+      'uses to assign permissions.  Use this form to define which roles are eligible to take which slots. '.
+      'Add a role using the New Eligible Role menu.  To remove a role, simply change to to a blank.';
+    $form['instructions'] = array(
+				  '#type' => 'item',
+				  '#title' =>t('Eligibility instructions'),
+				  '#description' => t($instructions)
+				  );
     //Get a list of all the row and put them in an array indexed by their rid
     $role_array = array();
     $role_result = db_query("SELECT rid, name FROM {role} ORDER BY rid");
@@ -735,9 +744,11 @@ function shift_scheduler_admin_slot_form(){
 			  );
       $i = $i+1;
     }
+				  
     $form[$i-1] = array(//an extra row to add another eligible role
 			  '#type' => 'select',
 			  '#title' => t('New Eligible Role'),
+			  '#description' => t('To add a new eligible role, select one from this menu.'),
 			  '#options' => $role_array
 			  );
     $form['num_eligible']  = array(
@@ -803,7 +814,7 @@ function shift_scheduler_admin_slot_validate($form, &$form_state){
       }
     }
   }else {
-    form_set_error('name', t('You must specify a valid role name.'));
+    form_set_error('name', t('You must specify a valid slot name.'));
   }
 }
 
@@ -829,6 +840,8 @@ function shift_scheduler_admin_slot_submit($form, &$form_state) {
   }
   else if ($form_state['values']['op'] == t('Add slot')) {
     db_query("INSERT INTO {shift_scheduler_slots} (display_name, status) VALUES ('%s', 0)", $form_state['values']['name']);
+    $slot_info = db_fetch_object(db_query("SELECT slot_id FROM {shift_scheduler_slots} WHERE display_name ='%s'", $form_state['values']['name']));
+    db_query("INSERT INTO {shift_scheduler_slot_roles} (slot_id, rid) VALUES (%d, 2)", $slot_info->slot_id);//by default allow any authenticated user to be placed in a slot
     drupal_set_message(t('The slot has been added.'));
   }
 }
