@@ -705,6 +705,34 @@ function shift_scheduler_admin_slot_form(){
 			    '#default_value' => $row->status,
 			    '#options' => array(t('Active'), t('Deactivated')),
 			    );
+    //Get a list of all the row and put them in an array indexed by their rid
+    $role_array = array();
+    $role_result = db_query("SELECT rid, name FROM {role} ORDER BY rid");
+    while($role_row = db_fetch_object($role_result)){
+      $role_array[$role_row->rid] = $role_row->name;
+    }
+    $role_array[1] = ''; //anonymous users can't be assigned shifts
+    //generate a form item for each role already eligible for this slot
+    $i = 1;
+    $result = db_query("SELECT {role}.rid, {role}.name FROM {shift_scheduler_slot_roles} INNER JOIN {role} ON {shift_scheduler_slot_roles}.rid = {role}.rid WHERE {shift_scheduler_slot_roles}.slot_id = %d ORDER BY {role}.name", $slot_id);
+    while($row = db_fetch_object($result)){
+      $form[$i-1] = array(
+			  '#type' => 'select',
+			  '#title' => t('Role ' . $i),
+			  '#options' => $role_array,
+			  '#default_value' => $row->rid
+			  );
+      $i = $i+1;
+    }
+    $form[$i-1] = array(//an extra row to add another eligible role
+			  '#type' => 'select',
+			  '#title' => t('New Eligible Role'),
+			  '#options' => $role_array
+			  );
+    $form['num_eligible']  = array(
+				   '#type' => 'value',
+				   '#value' => $i-1
+				   );
     $form['slot_id'] = array(
 			 '#type' => 'value',
 			 '#value' => $slot_id,
@@ -717,9 +745,9 @@ function shift_scheduler_admin_slot_form(){
 			    '#type' => 'submit',
 			    '#value' => t('Delete slot'),
 			    );
-
+    
   }
-  else{
+  else{//If you aren't editing a particular slot, assume we're creating a new one
     $form['name'] = array(
 			  '#type' => 'textfield',
 			  '#size' => 32,
@@ -742,8 +770,18 @@ function shift_scheduler_admin_slot_validate($form, &$form_state){
   if ($form_state['values']['name']) {
     //Edit slot
     if ($form_state['values']['op'] == t('Save slot')) {
+      //check for duplicate names
       if (db_result(db_query("SELECT COUNT(*) FROM {shift_scheduler_slots} WHERE display_name = '%s' AND slot_id != %d", $form_state['values']['name'], $form_state['values']['slot_id']))) {
-        form_set_error('name', t('The slot name %name already exists. Please choose another role name.', array('%name' => $form_state['values']['name'])));
+        form_set_error('name', t('The slot name %name already exists. Please choose another slot name.', array('%name' => $form_state['values']['name'])));
+      }
+      //check for duplicate eligible roles
+      $seen_array = array();
+      for($i=0; $i<= $form_state['values']['num_eligible']; $i++){
+	$rid = $form_state['values'][$i-1];
+	if($seen_array[$rid] && $rid != 1){//if the rid has already been seen and isn't the empty role
+	  form_set_error($i-1, t('Roles may not appear more than once.'));
+	}
+	$seen_array[$rid] = TRUE;
       }
     }
     //Add slot
@@ -763,6 +801,12 @@ function shift_scheduler_admin_slot_submit($form, &$form_state) {
   if ($form_state['values']['op'] == t('Save slot')) {
     db_query("UPDATE {shift_scheduler_slots} SET display_name = '%s' WHERE slot_id = %d", $form_state['values']['name'], $form_state['values']['slot_id']);
     db_query("UPDATE {shift_scheduler_slots} SET status = %d WHERE slot_id = %d", $form_state['values']['status'], $form_state['values']['slot_id']);
+    db_query("DELETE FROM {shift_scheduler_slot_roles} WHERE slot_id = %d", $form_state['values']['slot_id']);
+    for($i=0; $i < $form_state['values']['num_eligible'] + 1; $i++){//update eligible roles
+      if($form_state['values'][$i] != 1){
+	db_query("INSERT INTO {shift_scheduler_slot_roles} (slot_id, rid) VALUES (%d, %d)", $form_state['values']['slot_id'],$form_state['values'][$i]);
+      }
+    }
     drupal_set_message(t('The slot has been updated.'));
   }
   else if ($form_state['values']['op'] == t('Delete slot')) {
@@ -776,8 +820,6 @@ function shift_scheduler_admin_slot_submit($form, &$form_state) {
     db_query("INSERT INTO {shift_scheduler_slots} (display_name, status) VALUES ('%s', 0)", $form_state['values']['name']);
     drupal_set_message(t('The slot has been added.'));
   }
-  $form_state['redirect'] = 'admin/settings/shift_scheduler/slot';
-  return;
 }
 
 
