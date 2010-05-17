@@ -835,7 +835,7 @@ function shift_scheduler_admin_slot_submit($form, &$form_state) {
     db_query('DELETE FROM {shift_scheduler_slots} WHERE slot_id = %d', $form_state['values']['slot_id']);
     db_query('DELETE FROM {shift_scheduler_shifts} WHERE slot_id = %d', $form_state['values']['slot_id']);
     db_query('DELETE FROM {shift_scheduler_slot_times} WHERE slot_id = %d', $form_state['values']['slot_id']);
-    
+    $form_state['redirect'] = array('admin/settings/shift_scheduler/slot');
     drupal_set_message(t('The slot and all of its associated shifts have been deleted.'));
   }
   else if ($form_state['values']['op'] == t('Add slot')) {
