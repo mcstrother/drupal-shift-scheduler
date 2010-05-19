@@ -87,10 +87,12 @@ function shift_scheduler_old_schedule_form(){
 
 //validates that the start date is less than the end date
 function shift_scheduler_old_schedule_form_validate($form, &$form_state){ 
-	if(mktime(0,0,0, (int)$_GET['smon'], (int)$_GET['sday'], (int)$_GET['syear']) >
-		mktime(0,0,0, (int)$_GET['emon'], (int)$_GET['eday'], (int)$_GET['eyear'])){
-	form_set_error("start_date", t("Start date must be less than end date!"));
-	}
+  $start = $form_state['values']['start_date'];/* start = "form_info_start */
+  $end = $form_state['values']['end_date'];/* end = "form_info_end */
+  if(mktime(0,0,0, $start['month'], $start['day'], $start['year']) >
+     mktime(0,0,0, $end['month'], $end['day'], $end['year'])){
+    form_set_error("start_date", t("Start date must be less than end date."));
+  }
 }
 
 /*
