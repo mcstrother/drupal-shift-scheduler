@@ -89,7 +89,14 @@ function shift_scheduler_schema() {
 			'description' => t('The start time for a shift.'),
 			'type' => 'datetime',
 			'not null' => TRUE
-				    )
+				    ),
+		'weekday' => array(
+				   'description' => t('The day of the week in which this shif time applies.  1 is Monday, 7 is Saturday'),
+				   'type' => 'int',
+				   'not null' => TRUE,
+				   'unsigned' => TRUE,
+				   'initial' => 0
+				   )
 			  ),
 	'primary key' => array('slot_time_id')
 	 );
@@ -213,6 +220,22 @@ function shift_scheduler_update_6200(){
 			'not null' => FALSE,
 			'unsigned' => FALSE));
   
+
+  db_add_field($red, 'shift_scheduler_slot_times', 'weekday', array(
+								    'description' => t('The day of the week in which this shif time applies.  1 is Monday, 7 is Saturday'),
+								    'type' => 'int',
+								    'not null' => TRUE,
+								    'unsigned' => TRUE,
+								    'initial' => 0
+								    ));
+  //loop over all of the shifts that have weekday 0 and make equivalent shifts for weekday 1-7
+  $result = db_query("SELECT * FROM {shift_scheduler_slot_times} WHERE weekday=0");
+  while($row = db_fetch_object($result)){
+    for($i=1; $i < 8; $i++){
+      db_query("INSERT INTO {shift_scheduler_slot_times} (slot_id, start_time, end_time, weekday) VALUES (%d,'%s','%s')", $row->slot_id, $row->start_time, $row->end_time, $i);
+    }
+    db_query("DELETE FROM {shift_scheduler_slot_times} WHERE slot_time_id=%d", $row->slot_time_id);
+  }
 }
 
 
