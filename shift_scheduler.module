@@ -50,10 +50,17 @@ start date.
 function shift_scheduler_old_schedule_form(){
   //if you're already looking at an old schedule, make the form default to the first day already visible
   if($_GET['sday'] && $_GET['smon'] && $_GET['syear']){
-    $default = array(
+    $start_default = array(
 		     'year' => $_GET['syear'],
 		     'day' => $_GET['sday'],
 		     'month' => $_GET['smon']
+		     );
+	}
+  if($_GET['eday'] && $_GET['emon'] && $_GET['eyear']){
+	$end_default = array(
+		     'year' => $_GET['eyear'],
+		     'day' => $_GET['eday'],
+		     'month' => $_GET['emon']
 		     );
   }
   
@@ -61,8 +68,14 @@ function shift_scheduler_old_schedule_form(){
   $form['start_date']= array(
 			     '#type' => 'date',
 			     '#required' => TRUE,
-			     '#description' => t('Select a date to see an old shift schedule'),
-			     '#default_value' => $default
+			     '#description' => t('Select a start date to see an old shift schedule'),
+			     '#default_value' => $start_default
+			     );
+  $form['end_date']= array(
+			     '#type' => 'date',
+			     '#required' => TRUE,
+			     '#description' => t('Select an end date to see an old shift schedule'),
+			     '#default_value' => $end_default
 			     );
   $form['submit'] = array('#type' => 'submit', '#value' => t('See old schedule'));  
   $form['#submit'][] = 'shift_scheduler_old_schedule_form_submit';
@@ -75,9 +88,11 @@ function shift_scheduler_old_schedule_form(){
 Takes 
  */
 function shift_scheduler_old_schedule_form_submit($form, &$form_state){
-  $fi = $form_state['values']['start_date'];/* fi = "form_info */
-  $form_state['redirect']= array('shift_scheduler', 'sday='. $fi['day'] . '&'. 'smon=' . $fi['month'] . '&' . 'syear='. $fi['year']  );
+  $start = $form_state['values']['start_date'];/* start = "form_info_start */
+  $end = $form_state['values']['end_date'];/* end = "form_info_end */
   
+  $form_state['redirect']= array('shift_scheduler', 'sday='. $start['day'] . '&'. 'smon=' . $start['month'] . '&' . 'syear='. $start['year'] . '&' .
+	'eday='. $end['day'] . '&'. 'emon=' . $end['month'] . '&' . 'eyear='. $end['year']  );  
 }
 
 /*
