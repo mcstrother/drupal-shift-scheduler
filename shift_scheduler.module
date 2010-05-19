@@ -202,7 +202,6 @@ function shift_scheduler_schedule(){
   $page_content .= drupal_get_form('shift_scheduler_old_schedule_form');
   $has_content = FALSE;
   global $user; //get access to global variable representing the current user
-
   //handle claiming open shifts
   if($_GET['claim'] && $_GET['uid'] == $user->uid && $_GET['shift_id'] && variable_get('shift_scheduler_claim_open_shifts', FALSE)){
     //if the user has the right role, allow him to claim the shift
@@ -250,7 +249,7 @@ function shift_scheduler_schedule(){
     $slot_ids[] = $slot_row->slot_id;
     $page_content .= '<th valign="top">'. $slot_row->display_name .'</th>';
   }
-  $page_content .= '</tr>';
+  $page_content .= '</tr>';//finished writing the header row
 	
   $volunteer_cells = array();
   foreach($slot_ids as $slot_id){//init $volunteer_cells
@@ -872,6 +871,23 @@ function shift_scheduler_admin_default_shifts_form(&$form_state){
 		     '#title' => t('Default Shift ' . $i),
 		     '#tree' => TRUE
 		     );
+    $form[$i-1] = array(
+			'#type' => 'checkboxes',
+			'#title' => t('Days of Week'),
+			'#description' => t('The days of the week for the shift'),
+			'#options' => array(
+					    1 => t('Monday'),
+					    2 => t('Tuesday'),
+					    3 => t('Wednesday'),
+					    4 => t('Thursday'),
+					    5 => t('Friday'),
+					    6 => t('Saturday'),
+					    7 => t('Sunday')
+					    ),
+			'#default_value' => 0//TODO:
+			);	    
+			
+					    
     $form[$i-1]['slot_time_id'] = array(
 					'#type' => 'hidden',
 					'#value' => $row->slot_time_id
