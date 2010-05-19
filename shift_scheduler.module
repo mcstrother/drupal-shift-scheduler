@@ -243,11 +243,19 @@ function shift_scheduler_schedule(){
     $midnight = mktime(0,0,0, $today['mon'], $today['mday'], $today['year'])-60*60*24;
   }
   
+  //get end time
+  if($_GET['eday'] && $_GET['emon'] && $_GET['eyear']){//if specified in the URL, specify the time on which to start looking for shifts
+    $end_time = mktime(0,0,0, (int)$_GET['emon'], (int)$_GET['eday']+1, (int)$_GET['eyear']);
+  }
+  else{//if no end time specified, pick 10 years from today
+    $end_time = mktime(0,0,0, $today['mon'], $today['mday'], (int)$today['year']+10 );
+  }
   //get the shifts to display
   $query = "SELECT uid, start_time, end_time, {shift_scheduler_shifts}.slot_id, shift_id FROM " .
-    "{shift_scheduler_shifts} INNER JOIN {shift_scheduler_slots} ON {shift_scheduler_shifts}.slot_id={shift_scheduler_slots}.slot_id  WHERE start_time > '%s' AND {shift_scheduler_slots}.status=%d " .
+    "{shift_scheduler_shifts} INNER JOIN {shift_scheduler_slots} ON {shift_scheduler_shifts}.slot_id={shift_scheduler_slots}.slot_id " . 
+    "WHERE start_time > '%s' AND {shift_scheduler_slots}.status=%d AND start_time < '%s' " .
     "ORDER BY {shift_scheduler_shifts}.start_time, {shift_scheduler_shifts}.slot_id";
-  $queryResult = db_query($query, date("Y-m-d H:i:s", $midnight), 0);
+  $queryResult = db_query($query, date("Y-m-d H:i:s", $midnight), 0, date("Y-m-d H:i:s", $end_time));
   
   $midnight = $midnight + 60*60*24;//move midnight to midnight on the day after the first day to be displayed
   //iterate over the rows returned by the query, writing
