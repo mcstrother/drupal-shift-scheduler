@@ -918,7 +918,7 @@ function shift_scheduler_admin_default_shifts_form(&$form_state){
 					    6 => t('Saturday'),
 					    7 => t('Sunday')
 					    ),
-			//'#default_value' => 0//TODO:
+			'#default_value' => //TODO: fill this in with its current value
 			);	    
 			
 					    
