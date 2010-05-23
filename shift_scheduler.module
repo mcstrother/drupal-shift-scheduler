@@ -432,36 +432,42 @@ function shift_scheduler_change_shift_form(&$form_state){
   }
   
   $form = array();
+  $instructions  = 'Select which volunteer is taking the shift from the "Volunteer" menu. '.
+    'To split the shift between two volunteers, fill the time (in military format) at which the secondary volunteer will take over for the first volunteer in the "Split Time" box. ' .
+    'An "Open Shift" is a shift that should be filled but no one has volunteered to take it yet. '.
+    'A "Closed Shift" is a shift which was placed on the schedule, but does not require anyone to take it.';
+  $form['instructions'] = array(
+				'#type' => 'item',
+				'#title' => t('Instructions'),
+				'#description' => t($instructions)
+				);
   $form['shift_id'] = array(
 			  '#type' =>'hidden',
 			  '#value' => $shift_id
 			  );
+  
   $form['volunteer'] = array(
 			 '#type' => 'select',
 			 '#title' => t('Volunteer'),
 			 '#default_value' => $default_uid,
 			 '#options' => $options,
-			 '#description' => t('The volunteer on this shift.'),
-			 '#weight' => -10
+			 '#description' => t('The volunteer on this shift.')
 			 );
   $form['split_time'] = array(
 			      '#type' => 'textfield',
 			      '#title' => 'Split Time',
 			      '#size' => 10,
-			      '#maxlength' =>4,
-			      '#weight' => 0
+			      '#maxlength' =>4
 			      );
   $form['secondary_volunteer'] = array(
 			 '#type' => 'select',
 			 '#title' => t('Secondary Volunteer'),
 			 '#default_value' => 0,
 			 '#options' => $options, 
-			 '#description' => t("The volunteer to take the second part of the shift.  Leave this blank unless you're splitting the shift."),
-			 '#weight' => 9
+			 '#description' => t("The volunteer to take the second part of the shift.  Leave this blank unless you're splitting the shift.")
 			 );
   $form['submit'] = array('#type' => 'submit', 
-			  '#value' => t('Change shift'), 
-			  '#weight' => 10,
+			  '#value' => t('Change shift')
 			  );
   $form['#submit'][]= 'shift_scheduler_change_shift_form_submit';
   $form['#validate'][] = 'shift_scheduler_change_shift_form_validate';
