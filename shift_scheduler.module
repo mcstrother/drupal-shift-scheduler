@@ -151,8 +151,13 @@ Used only in shift_scheduler_schedule.
 function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t){
   global $user;
   //get the volunteer's name
-  $name = "Open Shift";
-  if($uid){
+  if($uid==0){
+    $name = "Open Shift";
+  }
+  elseif($uid==-1){
+    $name = "Closed Shift";
+  }
+  else{
     $name = _schedule_format_name($uid);
   }
   
@@ -162,9 +167,11 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
   //make the text into a link so it can be edited
   if(user_access('edit shift schedule') && $start_time_t > (time() - 60*60*4)){ 
     $options = array('query' => 'shift=' . $shift_id);
-    if ($name=="Open Shift"){
+    if ($uid == 0){
       $options['attributes'] = array('style' => 'color: #FF0000'); //make the link red
-      
+    }
+    elseif($uid==-1){
+      $options['attributes'] = array('style' => 'color: #008000'); //make the link green
     }
     $link_page = 'shift_scheduler/change_shift';
   }//if claiming shifts is enabled and the shift is open, allow the user to claim it
@@ -195,7 +202,7 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
   }
 
   if(variable_get('shift_scheduler_link_to_profile', FALSE)){
-    if($uid){
+    if($uid>0){
       $name = l($name, 'user' . '/' . $uid);
     }
     if($link_page && $options){
@@ -210,8 +217,11 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
     }
   }
 
-  if($name=="Open Shift"){//if it's still an open shift, make it red and bold
+  if($uid==0){//if it's still an open shift, make it red and bold
     $shift_text = '<b><font  color="Red">' . $shift_text .'</font></b>';
+  }
+  elseif($uid ==-1){
+    $shift_text = '<font  color="Green">' . $shift_text .'</font>';
   }
   elseif($uid==$user->uid){
     $shift_text = '<font style="BACKGROUND-COLOR: #254117">' . $shift_text . '</font>'; 
@@ -413,7 +423,8 @@ function shift_scheduler_change_shift_form(&$form_state){
   $shift_info = db_fetch_object($shift_query_result);
   //Get a list of volunteers who are eligible to take this shift
   $options = array();
-  $options[0] = ' ';
+  $options[0] = 'Open Shift';
+  $options[-1] = 'Closed Shift';
   $options_query = "SELECT users.uid, users.name, users_roles.rid FROM users INNER JOIN users_roles ON users_roles.uid = users.uid INNER JOIN shift_scheduler_slot_roles ON users_roles.rid = shift_scheduler_slot_roles.rid WHERE shift_scheduler_slot_roles.slot_id = %d";
   $options_result = db_query($options_query, $shift_info->slot_id);
   while( $options_row = db_fetch_object($options_result) ){
@@ -1100,12 +1111,6 @@ function shift_scheduler_admin_default_shifts_submit($form, &$form_state){
 }
 
 function shift_scheduler_configure(){
-  if(!variable_get('shift_scheduler_claim_open_shifts', FALSE)){
-    variable_set('shift_scheduler_claim_open_shifts', 0); 
-  }
-  if(!variable_get('shift_scheduler_link_to_profile', FALSE)){
-    variable_set('shift_scheduler_claim_open_shifts', 0); 
-  }
   return drupal_get_form('shift_scheduler_configure_form');
 }
 
@@ -1142,9 +1147,9 @@ function shift_scheduler_configure_form(&$form_state){
 }
 
 function shift_scheduler_configure_submit($form, &$form_state){
-  variable_set('shift_scheduler_claim_open_shifts', $form_state['values']['claim_open_shifts']);
-  variable_set('shift_scheduler_relinquish_shifts', $form_state['values']['relinquish_shifts']);
-  variable_set('shift_scheduler_link_to_profile', $form_state['values']['link_to_profile']);
+  variable_set('shift_scheduler_claim_open_shifts', (int)$form_state['values']['claim_open_shifts']);
+  variable_set('shift_scheduler_relinquish_shifts', (int)$form_state['values']['relinquish_shifts']);
+  variable_set('shift_scheduler_link_to_profile', (int)$form_state['values']['link_to_profile']);
 }
 
 /*
