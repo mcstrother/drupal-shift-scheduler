@@ -1078,11 +1078,23 @@ function shift_scheduler_admin_default_shifts_validate($form, &$form_state){
     $nst = mktime((int) ($nss[0] . $nss[1]), (int)($nss[2] . $nss[3])); //new start time
     $net = mktime((int) ($nes[0] . $nes[1]), (int)($nes[2] . $nes[3])); //new end time
     for($i=0; $i<(int)$form_state['values']['num_defined']; $i++){
+      $overlapping_days = FALSE;
+      foreach($form_state['values'][$i]['weekday'] as $day_num){
+	foreach($form_state['values']['new_time']['weekday'] as $new_day_num){
+	  if($day_num == $new_day_num && $day_num !=0){
+	    $overlapping_days=TRUE;
+	    break;
+	  }
+	}
+	if($overlapping_days){
+	  break;
+	}
+      }
       $oss = $form_state['values'][$i]['start_time']; //old start string
       $oes = $form_state['values'][$i]['end_time']; //old end string
       $ost = mktime((int) ($oss[0] . $oss[1]), (int)($oss[2] . $oss[3])); //old start time
       $oet = mktime((int) ($oes[0] . $oes[1]), (int)($oes[2] . $oes[3])); //new end time
-      if(( $nst<$oet  && $nst>$ost ) || ($net<$oet && $net>$ost) ){
+      if((( $nst<$oet  && $nst>$ost ) || ($net<$oet && $net>$ost)) && $overlapping_days ){
 	form_set_error($i, t('The new default shift cannot overlap with any of the old default shifts.'));
       }
     }
