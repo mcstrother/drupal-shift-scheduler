@@ -929,7 +929,8 @@ function shift_scheduler_admin_default_shifts_form(&$form_state){
 					    6 => t('Saturday'),
 					    7 => t('Sunday')
 					    ),
-			'#default_value' => $weekday_default
+			'#default_value' => $weekday_default,
+			'#multicolumn' => array('width'=>7)
 			);	    
 			
 					    
@@ -989,7 +990,8 @@ function shift_scheduler_admin_default_shifts_form(&$form_state){
 							   6 => t('Saturday'),
 							   7 => t('Sunday')
 							   ),
-				       '#default_value' => $weekday_default
+				       '#default_value' => $weekday_default,
+				       '#multicolumn' => array('width'=>7)
 				       );	    
   $form['new_time']['start_time'] = array(
 				    '#type' => 'textfield',
