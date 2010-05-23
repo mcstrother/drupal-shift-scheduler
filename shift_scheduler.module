@@ -1064,10 +1064,28 @@ function shift_scheduler_admin_default_shifts_validate($form, &$form_state){
     }
 
   }
-  //Check that either neither or both of the times for a new slot are filled in
+  //Check that either neither or both of the times for a new default shift are filled in
   if(strlen($form_state['values']['new_time']['start_time']) == 4 ^ 
      strlen($form_state['values']['new_time']['end_time']) == 4){
     form_set_error('new_time',t('To add a new default shift, you must enter values for both its start and end times'));
+  }
+
+  //check that the new default shift does not overlap with any of the old ones
+  if(strlen($form_state['values']['new_time']['start_time']) == 4 && 
+     strlen($form_state['values']['new_time']['end_time']) == 4){
+    $nss = $form_state['values']['new_time']['start_time']; //new start string
+    $nes =$form_state['values']['new_time']['end_time']; //new end string
+    $nst = mktime((int) ($nss[0] . $nss[1]), (int)($nss[2] . $nss[3])); //new start time
+    $net = mktime((int) ($nes[0] . $nes[1]), (int)($nes[2] . $nes[3])); //new end time
+    for($i=0; $i<(int)$form_state['values']['num_defined']; $i++){
+      $oss = $form_state['values'][$i]['start_time']; //old start string
+      $oes = $form_state['values'][$i]['end_time']; //old end string
+      $ost = mktime((int) ($oss[0] . $oss[1]), (int)($oss[2] . $oss[3])); //old start time
+      $oet = mktime((int) ($oes[0] . $oes[1]), (int)($oes[2] . $oes[3])); //new end time
+      if(( $nst<$oet  && $nst>$ost ) || ($net<$oet && $net>$ost) ){
+	form_set_error($i, t('The new default shift cannot overlap with any of the old default shifts.'));
+      }
+    }
   }
 }
 
