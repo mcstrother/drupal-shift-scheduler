@@ -1217,6 +1217,7 @@ function shift_scheduler_configure_form(&$form_state){
 				     '#default_value' => variable_get('shift_scheduler_relinquish_shifts', 0),
 				     '#options' => array(t('Disabled'), t('Enabled'))
 				     );
+  /*
   $form['link_to_profile'] = array(
 				     '#name'=> 'link_to_profile',
 				     '#type' => 'radios',
@@ -1225,7 +1226,7 @@ function shift_scheduler_configure_form(&$form_state){
 				     '#default_value' => variable_get('shift_scheduler_link_to_profile', 0),
 				     '#options' => array(t('Disabled'), t('Enabled'))
 				     );
-  
+  */
   $form['submit'] = array('#type' => 'submit', '#value' => t('Update'));  
   $form['#submit'][] = 'shift_scheduler_configure_submit';
   return $form;
