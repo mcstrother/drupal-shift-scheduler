@@ -351,15 +351,30 @@ function shift_scheduler_create_days_form($form_state){
 
 function shift_scheduler_create_days_form_validate($form, &$form_state){
   $result = db_query('SELECT * FROM {shift_scheduler_slot_times} INNER JOIN {shift_scheduler_slots} ON {shift_scheduler_slot_times}.slot_id={shift_scheduler_slots}.slot_id WHERE {shift_scheduler_slots}.status=%d',0);
-  $slot_time = db_fetch_object($result);
+  //get start date from form
   $sday = $form_state['values']['start_date']['day'];
   $smon = $form_state['values']['start_date']['month'];
   $syear = $form_state['values']['start_date']['year'];
-  $start_time = mktime((int)($slot_time->start_time[11].$slot_time->start_time[12]), (int)($slot_time->start_time[14].$slot_time->start_time[15]), 0, $smon, $sday+$i, $syear);
-  //If the first shift to be added already exists in the database, say there is an error
-  $redundant = db_fetch_object(db_query("SELECT shift_id FROM {shift_scheduler_shifts} WHERE start_time='%s' AND slot_id=%d", date("Y-m-d H:i:00", $start_time),$slot_time->slot_id ));
-  if($redundant){
-    form_set_error('start_date',t('Creating days failed because the first day you selected has already been created.'));
+  $eday = $form_state['values']['end_date']['day'];
+  $emon = $form_state['values']['end_date']['month'];
+  $eyear = $form_state['values']['end_date']['year'];
+  $num_days = (mktime(0,0,0,$emon,$eday,$eyear) -  mktime(0,0,0,$smon,$sday,$syear))/(60*60*24)+1;//total number of days being added
+  
+  while($slot_time = db_fetch_object($result)){
+    for($i = 0; $i < $num_days; $i++){
+      $start_time = mktime((int)($slot_time->start_time[11].$slot_time->start_time[12]), (int)($slot_time->start_time[14].$slot_time->start_time[15]), 0, $smon, $sday+$i, $syear);
+      $end_time = mktime((int)($slot_time->end_time[11].$slot_time->end_time[12]), (int)($slot_time->end_time[14].$slot_time->end_time[15]), 0, $smon, $sday+$i, $syear);
+      if($end_time < $start_time){//infer if end time is on the next day
+	$end_time = $end_time + 60*60*24;
+      }
+      if($slot_time->{strtolower(date('l',$start_time))}){//check if the shift should be created by the day of the week
+	$sts = date ("Y-m-d H:i:00", $start_time);//start time string
+	$ets = date ("Y-m-d H:i:00", $end_time);//start time string
+	if(db_fetch_object(db_query("SELECT shift_id FROM {shift_scheduler_shifts} WHERE slot_id=%d AND start_time='%s' AND end_time='%s'", $slot_time->slot_id,$sts, $ets))){
+	  form_set_error('start_date', t('Adding days failed because adding this date range results in the creation of duplicate shifts'));
+	}
+      }
+    } 
   }
 }
 
@@ -385,10 +400,12 @@ function shift_scheduler_create_days_form_submit($form, &$form_state){
 	$end_time = $end_time + 60*60*24;
       }
       if($slot_time->{strtolower(date('l',$start_time))}){//check if the shift should be created by the day of the week
+	$sts = date ("Y-m-d H:i:00", $start_time);//start time string
+	$ets = date ("Y-m-d H:i:00", $end_time);//start time string
 	$new_record = array(
 			    'slot_id' => $slot_time->slot_id,
-			    'start_time' => date ("Y-m-d H:i:00", $start_time),
-			    'end_time' => date ("Y-m-d H:i:00", $end_time)
+			    'start_time' => $sts,
+			    'end_time' => $ets
 			    //uid is purposely left as null so the shift is open
 			    );
 	drupal_write_record('shift_scheduler_shifts', $new_record);
