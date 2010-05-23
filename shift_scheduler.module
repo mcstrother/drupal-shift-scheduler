@@ -438,10 +438,18 @@ function shift_scheduler_change_shift_form(&$form_state){
   $options = array();
   $options[0] = 'Open Shift';
   $options[-1] = 'Closed Shift';
-  $options_query = "SELECT users.uid, users.name, users_roles.rid FROM users INNER JOIN users_roles ON users_roles.uid = users.uid INNER JOIN shift_scheduler_slot_roles ON users_roles.rid = shift_scheduler_slot_roles.rid WHERE shift_scheduler_slot_roles.slot_id = %d";
-  $options_result = db_query($options_query, $shift_info->slot_id);
-  while( $options_row = db_fetch_object($options_result) ){
-    $options[$options_row->uid] = $options_row->name;
+  if(db_fetch_object(db_query('SELECT * FROM {shift_scheduler_slot_roles} WHERE slot_id=%d AND rid=2', $shift_info->slot_id))){//if authenticated user is an eligible role, get a list of all the users
+    $result = db_query('SELECT uid, name FROM {users} WHERE uid>1 ORDER BY name');
+    while($row = db_fetch_object($result)){
+      $options[$row->uid] = $row->name;
+    }
+  }
+  else{
+    $options_query = "SELECT users.uid, users.name, users_roles.rid FROM {users} INNER JOIN {users_roles} ON users_roles.uid = users.uid INNER JOIN {shift_scheduler_slot_roles} ON users_roles.rid = shift_scheduler_slot_roles.rid WHERE shift_scheduler_slot_roles.slot_id = %d ORDER BY users.name";
+    $options_result = db_query($options_query, $shift_info->slot_id);
+    while( $options_row = db_fetch_object($options_result) ){
+      $options[$options_row->uid] = $options_row->name;
+    }
   }
   $default_uid = 0;
   if($shift_info->uid){
