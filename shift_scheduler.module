@@ -464,34 +464,24 @@ function shift_scheduler_change_shift_form(&$form_state){
 			  '#weight' => 10,
 			  );
   $form['#submit'][]= 'shift_scheduler_change_shift_form_submit';
-  
+  $form['#validate'][] = 'shift_scheduler_change_shift_form_validate';
   return $form;
 }
 
-/*
-Process the change shift form after it is submitted
-This should not be called directly.  Instead, it is called by
-the drupal core because we specify:
-$form['#submit'][]= 'shift_scheduler_change_shift_form_submit'
-In shift_scheduler_change_shift_form
-
-@param form Provided by the drupal core
-@para form_state Provided by the drupal core.
-*/
-
-function shift_scheduler_change_shift_form_submit($form, &$form_state){
-  $fi = $form_state['values'];/* fi = "form_info */
+function shift_scheduler_change_shift_form_validate($form, &$form_state){
+  $fi = $form_state['values'];
+  if( strlen($fi['split_time']) != 4 && strlen($fi['split_time']) != 0 ){
+    form_set_error('split_time',t('The split time must be a valid military time.'));
+  }
   
-  //Get information about the shift that we're editing
   $shift_id =  (int) $fi['shift_id'];
   $shift_query_result = db_query("SELECT * FROM {shift_scheduler_shifts} WHERE shift_id = '%d' ", $shift_id);
   $shift_info = db_fetch_object($shift_query_result);
   $start_time = strtotime($shift_info->start_time);
   $end_time = strtotime($shift_info->end_time);
-
   //split is true iff a valid split has been entered
   $split_time = 0;
-  $split = ( $fi['volunteer'] != 0 && $fi['secondary_volunteer'] != 0 && strlen($fi['split_time']) == 4);//preliminary check that a time and secondary volunteer have been entered
+  $split = ( strlen($fi['split_time']) == 4);//preliminary check that a time and secondary volunteer have been entered
   if($split){//convert the military time entry into a full timestamp
     $st = $fi['split_time'];//st = split time
     $hour = (int)($st[0] . $st[1]);
@@ -506,8 +496,40 @@ function shift_scheduler_change_shift_form_submit($form, &$form_state){
     else{//split occurs on the same day as the start time
       $split_time = mktime($hour, $minute, 0, date('n', $start_time), date('j', $start_time), date('Y', $start_time));
     }
+    $form_state['values']['split_time_int'] = $split_time;
   }
-  $split = $split && ($start_time < $split_time  && $split_time < $end_time);//definitive check if a split has occurred
+  if($split && !($start_time < $split_time  && $split_time < $end_time)){//check for an invalid split time
+    form_set_error('split_time',t('The split time specified falls outside of the valid range.'));
+  }
+  
+}
+
+/*
+Process the change shift form after it is submitted
+This should not be called directly.  Instead, it is called by
+the drupal core because we specify:
+$form['#submit'][]= 'shift_scheduler_change_shift_form_submit'
+In shift_scheduler_change_shift_form
+
+@param form Provided by the drupal core
+@para form_state Provided by the drupal core.
+*/
+function shift_scheduler_change_shift_form_submit($form, &$form_state){
+  $fi = $form_state['values'];/* fi = "form_info */
+  
+  //Get information about the shift that we're editing
+  $shift_id =  (int) $fi['shift_id'];
+  $shift_query_result = db_query("SELECT * FROM {shift_scheduler_shifts} WHERE shift_id = '%d' ", $shift_id);
+  $shift_info = db_fetch_object($shift_query_result);
+  $start_time = strtotime($shift_info->start_time);
+  $end_time = strtotime($shift_info->end_time);
+
+  //split is true iff a valid split has been entered
+  $split_time = 0;
+  $split = ( strlen($fi['split_time']) == 4);//preliminary check that a time and secondary volunteer have been entered
+  if($split){//convert the military time entry into a full timestamp
+    $split_time = $form_state['values']['split_time_int'];
+  }
 
 
   if(!($split)){  //simple case: no split
