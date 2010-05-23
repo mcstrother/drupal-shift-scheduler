@@ -898,6 +898,8 @@ function shift_scheduler_admin_default_shifts_form(&$form_state){
 				'#title' => t('Instructions'),
 				'#description' => t($instructions)
 				);
+  $last_row = NULL;
+  $weekday_default_helper = array(1=> (int)$row->monday, 2=>(int)$row->tuesday, 3=>(int)$row->wednesday, 4=>(int)$row->thursday, 5=>(int)$row->friday, 6=>(int)$row->saturday, 7=>(int)$row->sunday);
   $i =1;
   while($row = db_fetch_object($result)){
     $form[$i-1] = array(
@@ -905,7 +907,6 @@ function shift_scheduler_admin_default_shifts_form(&$form_state){
 		     '#title' => t('Default Shift ' . $i),
 		     '#tree' => TRUE
 		     );
-    $weekday_default_helper = array(1=> (int)$row->monday, 2=>(int)$row->tuesday, 3=>(int)$row->wednesday, 4=>(int)$row->thursday, 5=>(int)$row->friday, 6=>(int)$row->saturday, 7=>(int)$row->sunday);
     $weekday_default = array();
     for($j =0; $j<8; $j++){
       if($weekday_default_helper){
@@ -948,6 +949,7 @@ function shift_scheduler_admin_default_shifts_form(&$form_state){
 			      '#default_value' => ($row->end_time[11] . $row->end_time[12] . $row->end_time[14] . $row->end_time[15])
 			      );
     $i = $i+1;
+    $last_row = $row;
   }
   $form['slot_id'] = array(
 			    '#type' => 'hidden',
@@ -963,7 +965,29 @@ function shift_scheduler_admin_default_shifts_form(&$form_state){
 		     '#title' => t('New Time'),
 		     '#description' => t('Fill in times here to create a new default time'),
 		     '#tree' => TRUE
-					      );
+			    );
+
+  $weekday_default = array();
+  for($j =0; $j<8; $j++){
+    if($weekday_default_helper){
+      $weekday_default[] = $j;
+    }
+  }
+  $form['new_time']['weekday'] = array(
+				       '#type' => 'checkboxes',
+				       '#title' => t('days of week'),
+				       '#description' => t('The days of the week for the shift'),
+				       '#options' => array(
+							   1 => t('Monday'),
+							   2 => t('Tuesday'),
+							   3 => t('Wednesday'),
+							   4 => t('Thursday'),
+							   5 => t('Friday'),
+							   6 => t('Saturday'),
+							   7 => t('Sunday')
+							   ),
+				       '#default_value' => $weekday_default
+				       );	    
   $form['new_time']['start_time'] = array(
 				    '#type' => 'textfield',
 				    '#title' => t('start time'),
@@ -994,6 +1018,7 @@ function shift_scheduler_admin_default_shifts_validate($form, &$form_state){
     if( !((strlen($st) == strlen($et)) && (strlen($st) == 4 || strlen($st) ==0))){
       form_set_error($i, t('Both the start time and the end time must either be blank or full 4-number military times (e.g. 0900 or 1354)')); 
     }
+
   }
   //Check that either neither or both of the times for a new slot are filled in
   if(strlen($form_state['values']['new_time']['start_time']) == 4 ^ 
@@ -1017,9 +1042,17 @@ function shift_scheduler_admin_default_shifts_submit($form, &$form_state){
     }
     $start_time = mktime((int) ($ss[0] . $ss[1]), (int)($ss[2] . $ss[3]));
     $end_time = mktime((int) ($es[0] . $es[1]), (int)($es[2] . $es[3]));
-    db_query("UPDATE {shift_scheduler_slot_times} SET start_time='%s', end_time='%s' WHERE slot_time_id = %d", 
+    $weekday = $form_state['values'][$i]['weekday'];
+    db_query("UPDATE {shift_scheduler_slot_times} SET start_time='%s', end_time='%s', monday=%d, tuesday=%d, wednesday=%d, thursday=%d, friday=%d, saturday=%d, sunday=%d, WHERE slot_time_id = %d", 
 	     date("Y-m-d H:i:00", $start_time), 
-	     date("Y-m-d H:i:00", $end_time), 
+	     date("Y-m-d H:i:00", $end_time),
+	     $weekday[1],
+	     $weekday[2],
+	     $weekday[3],
+	     $weekday[4],
+	     $weekday[5],
+	     $weekday[6],
+	     $weekday[7],
 	     $slot_time_id);
   }
   //Add new default shift
@@ -1027,6 +1060,7 @@ function shift_scheduler_admin_default_shifts_submit($form, &$form_state){
     //get the strings for the start and end times from the form
     $ss = $form_state['values']['new_time']['start_time']; //ss=start string
     $es = $form_state['values']['new_time']['end_time']; 
+    $weekday = $form_state['values']['new_time']['weekday'];
     //convert strings to seconds after the unix epoch
     //the day is arbitrarily chosen to be the first day of the unix epoch
     $start_time = mktime((int) ($ss[0] . $ss[1]), (int)($ss[2] . $ss[3]));
@@ -1034,7 +1068,14 @@ function shift_scheduler_admin_default_shifts_submit($form, &$form_state){
     $new_record = array(
 			'start_time' => date("Y-m-d H:i:00", $start_time),
 			'end_time' => date("Y-m-d H:i:00", $end_time),
-			'slot_id' => $slot_id
+			'slot_id' => $slot_id,
+			'monday' => $weekday[1],
+			'tuesday' => $weekday[2],
+			'wednesday' => $weekday[3],
+			'thursday' => $weekday[4],
+			'friday' => $weekday[5],
+			'saturday' => $weekday[6],
+			'sunday' => $weekday[7]
 			);
     drupal_write_record('shift_scheduler_slot_times', $new_record);
     drupal_set_message(t('New default shift added'));
