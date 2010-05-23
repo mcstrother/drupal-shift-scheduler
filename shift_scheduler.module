@@ -316,9 +316,11 @@ function shift_scheduler_schedule(){
 
   //display something if there is no content on the page
   if ( !$has_content){
-    $page_content .= t('No current shifts to display.');
+    $page_content .= '<p><b>' .t('There are no shifts to display in this date range.') . '</b></p>' ;
   }
-  $page_content .= theme('table',$schedule_header, $schedule_rows);
+  else{
+    $page_content .= theme('table',$schedule_header, $schedule_rows);
+  }
   return $page_content;
 
 }
