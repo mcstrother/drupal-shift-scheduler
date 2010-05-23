@@ -311,6 +311,14 @@ function shift_scheduler_update_6200(){
 								    'unsigned' => TRUE,
 								    'initial' => 1
 								    ));
+  db_add_field($ret, 'shift_scheduler_slot_times', 'sunday', array(
+								    'description' => t('Whether the shift occurs on this day of the week'),
+								    'type' => 'int',
+								    'size' => 'tiny',
+								    'not null' => TRUE,
+								    'unsigned' => TRUE,
+								    'initial' => 1
+								    ));
 
 }
 
