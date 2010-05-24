@@ -235,7 +235,7 @@ function shift_scheduler_update_6200(){
 	'primary key' => array('slot_time_id')
 	)
 	);
-
+  
   db_create_table($ret, 'shift_scheduler_slot_roles', array(
 							    'description' => t('Defines the roles that are elligible to fill each slot.'),
 							    'fields' => array(
@@ -256,6 +256,12 @@ function shift_scheduler_update_6200(){
 							    'primary key' => array('slot_id','rid')
 							    )
 		  );
+  //by default make authenticated users eligible for previously existing slots
+  $result = db_query('SELECT slot_id FROM  {shift_scheduler_slots}');
+  while($row = db_fetch_object($result)){
+    db_query('INSERT INTO {shift_scheduler_slot_roles} (slot_id, rid) VALUES (%d, 2)', $row->slot_id);
+  }
+
   db_change_field($ret, 'shift_scheduler_shifts', 'uid', 'uid', array(
 			'description' => t('A uid pointing to the volunteer that took the shift'),
 			'type' => 'int',
