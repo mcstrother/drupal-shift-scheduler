@@ -196,9 +196,9 @@ function _schedule_format_name($uid) {
 function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t) {
   global $user;
   //get the volunteer's name
-  $name = "Open Shift";
+  $name = t("Open Shift");
   if($uid == -1) {
-    $name = "Closed Shift";
+    $name = t("Closed Shift");
   }
   elseif($uid){
     $name = _schedule_format_name($uid);
@@ -211,7 +211,7 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
   if (user_access('edit shift schedule')
       && $start_time_t > (time() - 60 * 60 * 4)) { 
     $options = array('query' => "shift=$shift_id");
-    if ($name=="Open Shift") {
+    if ($name==t("Open Shift")) {
       //make the link red
       $options['attributes'] = array('style' => 'color: #FF0000');
     }
@@ -356,7 +356,7 @@ function shift_scheduler_schedule() {
   // the relevant data to the page content
   
   $schedule_header = array();
-  $schedule_header[] = array('data'=>'Date', 'valign'=>'top');
+  $schedule_header[] = array('data'=>t('Date'), 'valign'=>'top');
   
   //TODO: use drupal calls to make the table
   //get the slot names and the number of slots
@@ -534,8 +534,8 @@ function shift_scheduler_change_shift_form(&$form_state) {
   
   //Get a list of volunteers who are eligible to take this shift
   $options = array();
-  $options[0] = 'Open Shift';
-  $options[-1] = 'Closed Shift';
+  $options[0] = t('Open Shift');
+  $options[-1] = t('Closed Shift');
   if(db_fetch_object(db_query('SELECT * FROM {shift_scheduler_slot_roles} WHERE slot_id=%d AND rid=2', $shift_info->slot_id))){//if authenticated user is an eligible role, get a list of all the users
     $result = db_query('SELECT uid, name FROM {users} WHERE uid>1 ORDER BY name');
     while($row = db_fetch_object($result)){
@@ -555,10 +555,10 @@ function shift_scheduler_change_shift_form(&$form_state) {
   }
   
   $form = array();
-  $instructions  = 'Select which volunteer is taking the shift from the "Volunteer" menu. '.
-    'To split the shift between two volunteers, fill the time (in military format) at which the secondary volunteer will take over for the first volunteer in the "Split Time" box. ' .
-    'An "Open Shift" is a shift that should be filled but no one has volunteered to take it yet. '.
-    'A "Closed Shift" is a shift which was placed on the schedule, but does not require anyone to take it.';
+  $instructions  = t('Select which volunteer is taking the shift from the "Volunteer" menu. ').
+    t('To split the shift between two volunteers, fill the time (in military format) at which the secondary volunteer will take over for the first volunteer in the "Split Time" box. ') .
+    t('An "Open Shift" is a shift that should be filled but no one has volunteered to take it yet. ').
+    t('A "Closed Shift" is a shift which was placed on the schedule, but does not require anyone to take it.');
   $form['instructions'] = array(
 				'#type' => 'item',
 				'#title' => t('Instructions'),
@@ -578,9 +578,9 @@ function shift_scheduler_change_shift_form(&$form_state) {
 			     );
   $form['split_time'] = array(
 			      '#type' => 'textfield',
-			      '#title' => 'Split Time',
+			      '#title' => t('Split Time'),
 			      '#size' => 10,
-			            '#maxlength' =>4
+			      '#maxlength' =>4
 			      );
   $form['secondary_volunteer'] = array(
 				       '#type' => 'select',
@@ -703,15 +703,15 @@ function shift_scheduler_change_shift() {
                        '%st' => date('Hi',$start_time), 
                        '%et' => date('Hi', $end_time), 
                        '%sd' => date('M j', $start_time),
-                     )
-                    )
+			   )
+		   )
   );
   // if the shift didn't happen in the past
   if ($start_time >= time() - (60 * 60 * 4)) {
     $page_content = drupal_get_form('shift_scheduler_change_shift_form');
   }
   else {
-    $page_content = "This shift occured in the past. Please contact the webmaster to edit historical shifts.";
+    $page_content = t("This shift occured in the past. Please contact the webmaster to edit historical shifts.");
   }
   return $page_content; 
 }
@@ -735,7 +735,7 @@ function shift_scheduler_old_shifts_form(&$form_state) {
   }
   // Get a list of slots and save as options
   $slot_options = array();
-  $slot_options[-1] = 'All';
+  $slot_options[-1] = t('All');
   $slot_options_query = "SELECT slot_id, display_name FROM {shift_scheduler_slots} WHERE status=%d";
   $slot_options_result = db_query($slot_options_query);
   while ($slot_options_row = db_fetch_object($slot_options_result)) {
@@ -863,8 +863,8 @@ function shift_scheduler_old_shifts_results() {
   $page_content .= '<table class="body-table"> 
     <tbody>
       <tr>
-        <th valign="top" class="table-label"> Date </th>
-        <th valign="top"> Shifts </th>
+        <th valign="top" class="table-label">' .t(' Date').' </th>
+        <th valign="top">'.t(' Shifts').' </th>
       </tr> ';
   $midnight = 0;
   $has_content = FALSE;
@@ -889,11 +889,11 @@ function shift_scheduler_old_shifts_results() {
   }
   $page_content .= '</tbody></table>';
   if (!$has_content) {
-    $page_content .= "No shifts to display"; 
+    $page_content .= t("No shifts to display"); 
   }  
-  $page_content .= '<p><b> Total duty taken:</b>' . 
-    floor($total_duty / 3600) . ' hours ' .
-    floor(($total_duty % 3600) / 60) . ' minutes</p>';
+  $page_content .= '<p><b>'.t('Total duty taken:').'</b>' . 
+    floor($total_duty / 3600) . t(' hours ') .
+    floor(($total_duty % 3600) / 60) . t(' minutes').'</p>';
   return $page_content;
 }
 
@@ -975,10 +975,7 @@ function shift_scheduler_admin_slot_form() {
         t('Deactivated'),
       ),
     );
-    $instructions = 'In order for a user to take a shift in a particular slot, the user must be'.
-    'assinged a role that is eligible for that slot. The roles  used are the same roles that drupal'.
-    'uses to assign permissions.  Use this form to define which roles are eligible to take which slots. '.
-    'Add a role using the New Eligible Role menu. To remove a role, simply change to to a blank.';
+    $instructions = t('In order for a user to take a shift in a particular slot, the user must be assinged a role that is eligible for that slot. The roles  used are the same roles that drupal uses to assign permissions.  Use this form to define which roles are eligible to take which slots. Add a role using the New Eligible Role menu. To remove a role, simply change to to a blank.');
     $form['instructions'] = array(
       '#type' => 'item',
       '#title' => t('Eligibility instructions'),
@@ -1157,10 +1154,7 @@ function shift_scheduler_admin_default_shifts_form(&$form_state) {
   $slot_id = arg(4);
   $result = db_query("SELECT slot_time_id, start_time, end_time, monday, tuesday, wednesday, thursday, friday, saturday, sunday FROM {shift_scheduler_slot_times} WHERE slot_id=%d", $slot_id);
   $form = array();
-  $instructions = 'Times should be in military format (e.g. 0800, 1234). '. 
-    'To add a shift, fill in both the start time and the end time under New Shift ' .
-    'If the end time is before the start time, then the end time is taken to be on the following day ' .
-    'To delete a shift, delete both the start time and end time of that shift.';
+  $instructions = t('Times should be in military format (e.g. 0800, 1234). To add a shift, fill in both the start time and the end time under New Shift.  If the end time is before the start time, then the end time is taken to be on the following day.  To delete a shift, delete both the start time and end time of that shift.');
   $form['instructions'] = array(
     '#type' => 'item',
     '#title' => t('Instructions'),
@@ -1526,31 +1520,31 @@ function shift_scheduler_configure_submit($form, &$form_state) {
 function shift_scheduler_menu() {
   $items = array();
   $items['shift_scheduler'] = array(
-    'title' => 'Shift Schedule',
+    'title' => t('Shift Schedule'),
     'page callback' => 'shift_scheduler_schedule',
     'access arguments' => array('access shift schedule'),
     'type' => MENU_NORMAL_ITEM,
   );
   $items['shift_scheduler/add_days'] = array(
-    'title' => 'Add days',
+    'title' => t('Add days'),
     'page callback' => 'shift_scheduler_add_days',
     'access arguments' => array('add to shift schedule'),
     'type' => MENU_NORMAL_ITEM,
   );
   $items['shift_scheduler/change_shift'] = array(
-    'title' => 'Change shift',
+    'title' => t('Change shift'),
     'page callback' => 'shift_scheduler_change_shift',
     'access arguments' => array('edit shift schedule'),
     'type' => MENU_CALLBACK,
   );
   $items['shift_scheduler/old_shifts'] = array(
-    'title' => 'Old shifts',
+    'title' => t('Old shifts'),
     'page callback' => 'shift_scheduler_old_shifts',
     'access arguments' => array('access shift schedule'),
     'type' => MENU_NORMAL_ITEM,
   );
   $items['shift_scheduler/old_shifts_results']= array(
-    'title' => 'Old shifts',
+    'title' => t('Old shifts'),
     'page callback' => 'shift_scheduler_old_shifts_results',
     'access arguments' => array('access shift schedule'),
     'type' => MENU_CALLBACK,
