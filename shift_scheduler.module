@@ -421,7 +421,7 @@ function shift_scheduler_create_days_form($form_state) {
     '#required' => TRUE,
     '#description' => t('The last date to be created on the shift schedule.'),
   );
-  $form['submit'] = array('#type' => 'submit', '#value' => t('Create days'));
+  $form['submit'] = array('#type' => 'submit', '#value' => t('Add days'));
   $form['#submit'][] = 'shift_scheduler_create_days_form_submit';
   return $form;
 }
