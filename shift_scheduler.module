@@ -1549,12 +1549,10 @@ function shift_scheduler_menu() {
     'access arguments' => array('access shift schedule'),
     'type' => MENU_CALLBACK,
   );
-  //TODO: find a way to get the following as a normal menu item
   $items['admin/settings/shift_scheduler']= array(
     'title' => t('Shift Scheduler'),
     'description' => t('Administer the slots and default shifts on the shift schedule.'),
     'access arguments' => array(
-      'administer site configuration',
       'administer shift_scheduler',
     ),
     'type' => MENU_NORMAL_ITEM,
