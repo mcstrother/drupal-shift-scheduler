@@ -227,7 +227,7 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
           && ($uid == NULL || $uid == 0)
           && $start_time_t > (time() - 60 * 60 * 4)) {
     //check to see if user has proper role to be eligible to run in the slot
-    $shift_info = db_fetch_object(db_query("SELECT slot_id FROM {shift_scheduler_shifts} WHERE shift_id = %d", $_GET['shift_id']));
+    $shift_info = db_fetch_object(db_query("SELECT slot_id FROM {shift_scheduler_shifts} WHERE shift_id = %d", $shift_id));
     if(db_fetch_object(db_query("SELECT {users}.uid, {users}.name, {users_roles}.rid FROM {users} INNER JOIN {users_roles} ON {users_roles}.uid = {users}.uid INNER JOIN {shift_scheduler_slot_roles} ON {users_roles}.rid = {shift_scheduler_slot_roles}.rid WHERE {shift_scheduler_slot_roles}.slot_id = %d AND {users}.uid = %d", $shift_info->slot_id, $user->uid))){
       $options = array(
         'query' => array(
