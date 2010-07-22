@@ -176,6 +176,31 @@ function _schedule_format_name($uid) {
 }
 
 /**
+ * Check to see if a user can claim a shift.
+ *
+ * @param uid
+ *   The uid of the user wanting to claim the shift
+ * @param shift_id
+ *   The shift_id of the shift to be claimed.
+ * 
+ * @return 
+ *   True iff the shift can be claimed by the user
+ */
+
+function _can_claim($user_uid, $shift_id){
+  $shift_info = db_fetch_object(db_query("SELECT slot_id, start_time, end_time, uid FROM {shift_scheduler_shifts} WHERE shift_id = %d", $shift_id));
+  $out = ($user_uid != 0
+          && variable_get('shift_scheduler_claim_open_shifts', 0) == 1
+          && ($shift_info->uid == NULL || $shift_info->uid == 0)
+	  && (strtotime($shift_info->start_time) > (time() - 60 * 60 * 4))
+          && (db_fetch_object(db_query("SELECT {users}.uid, {users}.name, {users_roles}.rid FROM {users} INNER JOIN {users_roles} ON {users_roles}.uid = {users}.uid INNER JOIN {shift_scheduler_slot_roles} ON {users_roles}.rid = {shift_scheduler_slot_roles}.rid WHERE {shift_scheduler_slot_roles}.slot_id = %d AND {users}.uid = %d", $shift_info->slot_id, $user_uid)) || //check that user has an elligible role
+	  db_fetch_object(db_query("SELECT rid FROM shift_scheduler_slot_roles WHERE slot_id=%d AND rid=2", $shift_info->slot_id))//the 'authenticated user' role (rid=2) isn't listed explicitly in {users_roles} so we check separatrely here
+	      ));
+  return $out;
+}
+
+
+/**
  * Format a single shift and make the appropriate link. Called by
  * shift_scheduler_schedule().
  * 
@@ -222,13 +247,7 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
   }
   // if claiming shifts is enabled and the shift is open, then allow the user to
   // claim it
-  elseif ($user->uid != 0
-          && variable_get('shift_scheduler_claim_open_shifts', 0) == 1
-          && ($uid == NULL || $uid == 0)
-          && $start_time_t > (time() - 60 * 60 * 4)) {
-    //check to see if user has proper role to be eligible to run in the slot
-    $shift_info = db_fetch_object(db_query("SELECT slot_id FROM {shift_scheduler_shifts} WHERE shift_id = %d", $shift_id));
-    if(db_fetch_object(db_query("SELECT {users}.uid, {users}.name, {users_roles}.rid FROM {users} INNER JOIN {users_roles} ON {users_roles}.uid = {users}.uid INNER JOIN {shift_scheduler_slot_roles} ON {users_roles}.rid = {shift_scheduler_slot_roles}.rid WHERE {shift_scheduler_slot_roles}.slot_id = %d AND {users}.uid = %d", $shift_info->slot_id, $user->uid))){
+  elseif (_can_claim($user->uid, $shift_id)){
       $options = array(
         'query' => array(
           'uid' => $user->uid,
@@ -238,7 +257,6 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
         'attributes' => array('style' => 'color: #FF0000'),
       );
       $link_page = 'shift_scheduler';
-    }
   }
   // if relinquishing shifts is enabled and the shift belongs to this user,
   // allow user to relinquish it
@@ -271,7 +289,7 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
     }
   }
 
-  if($uid==0){//if it's still an open shift, make it red and bold
+  if($uid==0||$uid==NULL){//if it's still an open shift, make it red and bold
     $shift_text = '<b><font  color="Red">' . $shift_text .'</font></b>';
   }
   elseif($uid ==-1){
@@ -301,12 +319,9 @@ function shift_scheduler_schedule() {
   global $user;
   // handle claiming open shifts
   if ($_GET['claim'] && $_GET['uid'] == $user->uid && $_GET['shift_id']
-      && variable_get('shift_scheduler_claim_open_shifts', FALSE)) {
-    // if the user has the right role, allow him to claim the shift
-    $shift_info = db_fetch_object(db_query("SELECT slot_id FROM {shift_scheduler_shifts} WHERE shift_id = %d", $_GET['shift_id']));
-    if (db_fetch_object(db_query("SELECT {users}.uid, {users}.name, {users_roles}.rid FROM {users} INNER JOIN {users_roles} ON {users_roles}.uid = {users}.uid INNER JOIN {shift_scheduler_slot_roles} ON {users_roles}.rid = {shift_scheduler_slot_roles}.rid WHERE {shift_scheduler_slot_roles}.slot_id = %d AND {users}.uid = %d", $shift_info->slot_id, $user->uid))) {
-      db_query('UPDATE {shift_scheduler_shifts} SET uid=%d WHERE shift_id=%d', $user->uid, (int) $_GET['shift_id']);
-    }
+      && variable_get('shift_scheduler_claim_open_shifts', FALSE) 
+      && _can_claim($user->uid, $_GET['shift_id'])) {
+    db_query('UPDATE {shift_scheduler_shifts} SET uid=%d WHERE shift_id=%d', $user->uid, (int) $_GET['shift_id']);
   }
   // handle relinquishing shifts
   elseif ($_GET['relinquish'] && $_GET['shift_id']
