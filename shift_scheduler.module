@@ -194,7 +194,7 @@ function _can_claim($user_uid, $shift_id){
           && ($shift_info->uid == NULL || $shift_info->uid == 0)
 	  && (strtotime($shift_info->start_time) > (time() - 60 * 60 * 4))
           && (db_fetch_object(db_query("SELECT {users}.uid, {users}.name, {users_roles}.rid FROM {users} INNER JOIN {users_roles} ON {users_roles}.uid = {users}.uid INNER JOIN {shift_scheduler_slot_roles} ON {users_roles}.rid = {shift_scheduler_slot_roles}.rid WHERE {shift_scheduler_slot_roles}.slot_id = %d AND {users}.uid = %d", $shift_info->slot_id, $user_uid)) || //check that user has an elligible role
-	  db_fetch_object(db_query("SELECT rid FROM shift_scheduler_slot_roles WHERE slot_id=%d AND rid=2", $shift_info->slot_id))//the 'authenticated user' role (rid=2) isn't listed explicitly in {users_roles} so we check separatrely here
+	  db_fetch_object(db_query("SELECT rid FROM {shift_scheduler_slot_roles} WHERE slot_id=%d AND rid=2", $shift_info->slot_id))//the 'authenticated user' role (rid=2) isn't listed explicitly in {users_roles} so we check separatrely here
 	      ));
   return $out;
 }
