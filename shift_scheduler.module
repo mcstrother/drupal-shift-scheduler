@@ -373,9 +373,8 @@ function shift_scheduler_schedule() {
   $schedule_header = array();
   $schedule_header[] = array('data'=>t('Date'), 'valign'=>'top');
   
-  //TODO: use drupal calls to make the table
   //get the slot names and the number of slots
-  $slots_result = db_query('SELECT slot_id, display_name FROM {shift_scheduler_slots} WHERE status=0');//active slots only
+  $slots_result = db_query('SELECT slot_id, display_name FROM {shift_scheduler_slots} WHERE status=0 ORDER BY {shift_scheduler_slots}.display_name');//active slots only
   $slot_ids = array();
   while($slot_row = db_fetch_object($slots_result)){
     $slot_ids[] = $slot_row->slot_id;
@@ -938,7 +937,7 @@ function shift_scheduler_admin_slots() {
         'colspan' => 2,
       ),
     );
-    $result = db_query("SELECT slot_id, display_name FROM {shift_scheduler_slots}"); 
+    $result = db_query("SELECT slot_id, display_name FROM {shift_scheduler_slots} ORDER BY display_name"); 
     while ($row = db_fetch_object($result)) {
       $edit_default_shifts = l(t('edit default shifts'), 'admin/settings/shift_scheduler/default_shifts/'. $row->slot_id);
       $rows[] = array(
