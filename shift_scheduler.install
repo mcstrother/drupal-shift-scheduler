@@ -1,6 +1,12 @@
 <?php
 // $Id$
 
+/**
+ * @file
+ *
+ * Install file for the shift_scheduler module.
+ */
+
 function shift_scheduler_schema() {
   $schema['shift_scheduler_shifts'] = array(
     'description' => t('Holds the data for all the shifts taken by members of EST.'),
@@ -34,8 +40,7 @@ function shift_scheduler_schema() {
         'unsigned' => FALSE,
       ),
     ),
-    'primary key' => array('shift_id')
-	, //TODO: figure out a way to index using the start time for fast lookups.  This table is going to get big, and we can't do linear time searches all over the place
+    'primary key' => array('shift_id'), //TODO: figure out a way to index using the start time for fast lookups.  This table is going to get big, and we can't do linear time searches all over the place
   ); //closes schema array
   $schema['shift_scheduler_slots'] = array(
     'description' => t('Defines the different slots that must be filled in a work day.'),
@@ -178,7 +183,7 @@ function shift_scheduler_update_6200() {
     'size' => 'tiny',
     'not null' => TRUE,
   )
-		  );
+  );
   db_create_table($ret, 'shift_scheduler_slots', array(
     'description' => t('Defines the different slots that must be filled in a work day.'),
     'fields' => array(
@@ -205,7 +210,7 @@ function shift_scheduler_update_6200() {
     ),
     'primary key' => array('slot_id'),
   )
-	       );
+  );
   db_create_table($ret, 'shift_scheduler_slot_times', array(
     'description' => t('Defines the shifts that are automatically filled in in each slot when days are added to the schedule'),
     'fields' => array(
@@ -235,7 +240,7 @@ function shift_scheduler_update_6200() {
     ),
     'primary key' => array('slot_time_id'),
   )
-	);
+  );
 
   db_create_table($ret, 'shift_scheduler_slot_roles', array(
     'description' => t('Defines the roles that are elligible to fill each slot.'),
@@ -256,11 +261,11 @@ function shift_scheduler_update_6200() {
     ),
     'primary key' => array('slot_id', 'rid'),
   )
-		  );
+  );
   //by default make authenticated users eligible for previously existing slots
   $result = db_query('SELECT slot_id FROM  {shift_scheduler_slots}');
   while ($row = db_fetch_object($result)) {
-    db_query('INSERT INTO {shift_scheduler_slot_roles} (slot_id, rid) VALUES (%d, 2)', $row->slot_id);
+    update_sql('INSERT INTO {shift_scheduler_slot_roles} (slot_id, rid) VALUES ('. $row->slot_id .', 2)');
   }
 
   db_change_field($ret, 'shift_scheduler_shifts', 'uid', 'uid', array(

@@ -194,10 +194,10 @@ function _can_claim($user_uid, $shift_id) {
   $out = ($user_uid != 0
           && variable_get('shift_scheduler_claim_open_shifts', 0) == 1
           && ($shift_info->uid == NULL || $shift_info->uid == 0)
-	  && (strtotime($shift_info->start_time) > (time() - 60 * 60 * 4))
+          && (strtotime($shift_info->start_time) > (time() - 60 * 60 * 4))
           && (db_fetch_object(db_query("SELECT {users}.uid, {users}.name, {users_roles}.rid FROM {users} INNER JOIN {users_roles} ON {users_roles}.uid = {users}.uid INNER JOIN {shift_scheduler_slot_roles} ON {users_roles}.rid = {shift_scheduler_slot_roles}.rid WHERE {shift_scheduler_slot_roles}.slot_id = %d AND {users}.uid = %d", $shift_info->slot_id, $user_uid)) || //check that user has an elligible role
-	  db_fetch_object(db_query("SELECT rid FROM {shift_scheduler_slot_roles} WHERE slot_id=%d AND rid=2", $shift_info->slot_id))//the 'authenticated user' role (rid=2) isn't listed explicitly in {users_roles} so we check separatrely here
-	      ));
+          db_fetch_object(db_query("SELECT rid FROM {shift_scheduler_slot_roles} WHERE slot_id=%d AND rid=2", $shift_info->slot_id))//the 'authenticated user' role (rid=2) isn't listed explicitly in {users_roles} so we check separatrely here
+              ));
   return $out;
 }
 
@@ -263,7 +263,7 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
   // if relinquishing shifts is enabled and the shift belongs to this user,
   // allow user to relinquish it
   elseif ($user->uid == $uid
-	   && $user->uid != 0
+           && $user->uid != 0
            && variable_get('shift_scheduler_relinquish_shifts', 0) == 1
            && $start_time_t > (time() - 60 * 60 * 4)) {
     $options = array(
@@ -745,7 +745,7 @@ function shift_scheduler_change_shift() {
     '%et' => date('Hi', $end_time),
     '%sd' => date('M j', $start_time),
   )
-		   )
+  )
   );
   // if the shift didn't happen in the past
   if ($start_time >= time() - (60 * 60 * 4)) {
@@ -1099,7 +1099,7 @@ function shift_scheduler_admin_slot_validate($form, &$form_state) {
     // Edit slot
     if ($form_state['values']['op'] == t('Save slot')) {
       // check for duplicate names
-      if (db_result(db_query("SELECT COUNT(*) FROM {shift_scheduler_slots} WHERE display_name = '%s' AND slot_id != %d", $form_state['values']['name'], $form_state['values']['slot_id']))) {
+      if (db_result(db_query("SELECT COUNT(*) FROM {shift_scheduler_slots} WHERE display_name = '%s' AND slot_id <> %d", $form_state['values']['name'], $form_state['values']['slot_id']))) {
         form_set_error('name', t('The slot name %name already exists. Please choose another slot name.', array('%name' => $form_state['values']['name'])));
       }
       // check for duplicate eligible roles
