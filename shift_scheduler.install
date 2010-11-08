@@ -40,7 +40,7 @@ function shift_scheduler_schema() {
         'unsigned' => FALSE,
       ),
     ),
-    'primary key' => array('shift_id'), //TODO: figure out a way to index using the start time for fast lookups.  This table is going to get big, and we can't do linear time searches all over the place
+    'primary key' => array('shift_id'),
   ); //closes schema array
   $schema['shift_scheduler_slots'] = array(
     'description' => t('Defines the different slots that must be filled in a work day.'),
