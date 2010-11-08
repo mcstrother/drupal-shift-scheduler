@@ -46,7 +46,7 @@ function shift_scheduler_perm() {
  * @param slot_ids
  *   An array with all of the slot id numbers.
  */
-function _write_date_row(&$schedule_rows, $slot_cells, $timestamp, $slot_ids) {
+function _shift_scheduler_write_date_row(&$schedule_rows, $slot_cells, $timestamp, $slot_ids) {
   $row_data = array();
   $row_data[] = array(
     'data' => '<b><p>' . date('l', $timestamp) . '</p><p>' . date('n/j/Y', $timestamp) . '</p></b>',
@@ -159,7 +159,7 @@ function shift_scheduler_old_schedule_form_submit($form, &$form_state) {
  * @param uid
  *   The user id of the person whose formatted name will be returned.
  */
-function _schedule_format_name($uid) {
+function _shift_scheduler_schedule_format_name($uid) {
   $display_name = NULL;
   if (module_exists('profile')) {
     $last_name_row  = db_fetch_object(db_query("SELECT value FROM {profile_values} WHERE fid=2 AND uid=%d", $uid));
@@ -190,7 +190,7 @@ function _schedule_format_name($uid) {
  *   True iff the shift can be claimed by the user
  */
 
-function _can_claim($user_uid, $shift_id) {
+function _shift_scheduler_can_claim($user_uid, $shift_id) {
   $shift_info = db_fetch_object(db_query("SELECT slot_id, start_time, end_time, uid FROM {shift_scheduler_shifts} WHERE shift_id = %d", $shift_id));
   $out = ($user_uid != 0
           && variable_get('shift_scheduler_claim_open_shifts', 0) == 1
@@ -229,7 +229,7 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
     $name = t("Closed Shift");
   }
   elseif ($uid) {
-    $name = _schedule_format_name($uid);
+    $name = _shift_scheduler_schedule_format_name($uid);
   }
 
   $time = date('Hi', $start_time_t) . ' - ' . date('Hi', $end_time_t);
@@ -250,7 +250,7 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
   }
   // if claiming shifts is enabled and the shift is open, then allow the user to
   // claim it
-  elseif (_can_claim($user->uid, $shift_id)) {
+  elseif (_shift_scheduler_can_claim($user->uid, $shift_id)) {
     $options = array(
       'query' => array(
         'uid' => $user->uid,
@@ -324,7 +324,7 @@ function shift_scheduler_schedule() {
   // handle claiming open shifts
   if ($_GET['claim'] && $_GET['uid'] == $user->uid && $_GET['shift_id']
        && variable_get('shift_scheduler_claim_open_shifts', FALSE)
-       && _can_claim($user->uid, $_GET['shift_id'])) {
+       && _shift_scheduler_can_claim($user->uid, $_GET['shift_id'])) {
     db_query('UPDATE {shift_scheduler_shifts} SET uid=%d WHERE shift_id=%d', $user->uid, (int) $_GET['shift_id']);
   }
   // handle relinquishing shifts
@@ -402,7 +402,7 @@ function shift_scheduler_schedule() {
     $end_time_t = strtotime($row->end_time);
     if ($start_time_t > $midnight) {
       //a new day -> write the row and reset the variables appropriately
-      _write_date_row($schedule_rows, $volunteer_cells, $midnight -10, $slot_ids);
+      _shift_scheduler_write_date_row($schedule_rows, $volunteer_cells, $midnight -10, $slot_ids);
       $midnight = mktime(0, 0, 0, date('n', $start_time_t), date('j', $start_time_t) + 1, date('Y', $start_time_t) ); //move $midnight to the midnight after the start time
       foreach ($slot_ids as $slot_id) {
         //init $volunteer_cells
@@ -412,7 +412,7 @@ function shift_scheduler_schedule() {
     $shift_text = _schedule_format_shift_text($row->uid, $row->shift_id, $start_time_t, $end_time_t);
     $volunteer_cells[$row->slot_id] .= '<p> ' . $shift_text .  "</p>";
   }
-  _write_date_row($schedule_rows, $volunteer_cells, $midnight -10, $slot_ids); //write the last day
+  _shift_scheduler_write_date_row($schedule_rows, $volunteer_cells, $midnight -10, $slot_ids); //write the last day
 
 
   //display something if there is no content on the page
