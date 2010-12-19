@@ -1563,38 +1563,38 @@ function shift_scheduler_configure_submit($form, &$form_state) {
 function shift_scheduler_menu() {
   $items = array();
   $items['shift_scheduler'] = array(
-    'title' => t('Shift Schedule'),
+    'title' => 'Shift Schedule',
     'page callback' => 'shift_scheduler_schedule',
     'access arguments' => array('access shift schedule'),
     'type' => MENU_NORMAL_ITEM,
   );
   $items['shift_scheduler/add_days'] = array(
-    'title' => t('Add days'),
+    'title' => 'Add days',
     'page callback' => 'shift_scheduler_add_days',
     'access arguments' => array('add to shift schedule'),
     'type' => MENU_NORMAL_ITEM,
   );
   $items['shift_scheduler/change_shift'] = array(
-    'title' => t('Change shift'),
+    'title' => 'Change shift',
     'page callback' => 'shift_scheduler_change_shift',
     'access arguments' => array('edit shift schedule'),
     'type' => MENU_CALLBACK,
   );
   $items['shift_scheduler/old_shifts'] = array(
-    'title' => t('Old shifts'),
+    'title' => 'Old shifts',
     'page callback' => 'shift_scheduler_old_shifts',
     'access arguments' => array('access shift schedule'),
     'type' => MENU_NORMAL_ITEM,
   );
   $items['shift_scheduler/old_shifts_results'] = array(
-    'title' => t('Old shifts'),
+    'title' => 'Old shifts',
     'page callback' => 'shift_scheduler_old_shifts_results',
     'access arguments' => array('access shift schedule'),
     'type' => MENU_CALLBACK,
   );
   $items['admin/settings/shift_scheduler'] = array(
-    'title' => t('Shift Scheduler'),
-    'description' => t('Administer the slots and default shifts on the shift schedule.'),
+    'title' => 'Shift Scheduler',
+    'description' => 'Administer the slots and default shifts on the shift schedule.',
     'access arguments' => array(
       'administer shift_scheduler',
     ),
@@ -1602,7 +1602,7 @@ function shift_scheduler_menu() {
     'page callback' => 'shift_scheduler_admin_slots',
   );
   $items['admin/settings/shift_scheduler/slot'] = array(
-    'title' => t('Edit slots'),
+    'title' => 'Edit slots',
     'page callback' => 'shift_scheduler_admin_slots',
     'access arguments' => array(
       'administer shift_scheduler',
@@ -1610,7 +1610,7 @@ function shift_scheduler_menu() {
     'type' => MENU_NORMAL_ITEM,
   );
   $items['admin/settings/shift_scheduler/configure'] = array(
-    'title' => t('Configure Shift Scheduler'),
+    'title' => 'Configure Shift Scheduler',
     'page callback' => 'shift_scheduler_configure',
     'access arguments' => array(
       'administer shift_scheduler',
@@ -1618,7 +1618,7 @@ function shift_scheduler_menu() {
     'type' => MENU_NORMAL_ITEM,
   );
   $items['admin/settings/shift_scheduler/default_shifts'] = array(
-    'title' => t('Edit default shifts'),
+    'title' => 'Edit default shifts',
     'page callback' => 'shift_scheduler_admin_default_shifts',
     'access arguments' => array(
       'administer shift_scheduler',
