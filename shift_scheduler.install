@@ -9,32 +9,32 @@
 
 function shift_scheduler_schema() {
   $schema['shift_scheduler_shifts'] = array(
-    'description' => t('Holds the data for all the shifts taken by members of EST.'),
+    'description' => 'Holds the data for all the shifts taken by volunteers.',
     'fields' => array(
       'shift_id' => array(
-        'description' => t('An arbitrary unique identifier for each shift'),
+        'description' => 'An arbitrary unique identifier for each shift',
         'type' => 'serial',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
       'start_time' => array(
-        'description' => t('The start time for a shift.'),
+        'description' => 'The start time for a shift.',
         'type' => 'datetime',
         'not null' => TRUE,
       ),
       'end_time' => array(
-        'description' => t('The start time for a shift.'),
+        'description' => 'The start time for a shift.',
         'type' => 'datetime',
         'not null' => TRUE,
       ),
       'slot_id' => array(
-        'description' => t('The position in the duty crew.'),
+        'description' => 'The position in the duty crew.',
         'type' => 'int',
         'size' => 'tiny',
         'not null' => TRUE,
       ),
       'uid' => array(
-        'description' => t('A uid pointing to the volunteer that took the shift'),
+        'description' => 'A uid pointing to the volunteer that took the shift',
         'type' => 'int',
         'not null' => FALSE,
         'unsigned' => FALSE,
@@ -43,23 +43,23 @@ function shift_scheduler_schema() {
     'primary key' => array('shift_id'),
   ); //closes schema array
   $schema['shift_scheduler_slots'] = array(
-    'description' => t('Defines the different slots that must be filled in a work day.'),
+    'description' => 'Defines the different slots that must be filled in a work day.',
     'fields' => array(
       'slot_id' => array(
-        'description' => t('An arbitrary unique identifier for each slot'),
+        'description' => 'An arbitrary unique identifier for each slot',
         'type' => 'serial',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
       'display_name' => array(
-        'description' => t('e.g. Supervisor'),
+        'description' => 'The user-visible name for the slot, e.g. Supervisor',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
         'default' => '',
       ),
       'status' => array(
-        'description' => t('0 - Active, 1 - Deactivated'),
+        'description' => '0 - Active, 1 - Deactivated',
         'size' => 'tiny',
         'type' => 'int',
         'not null' => FALSE,
@@ -70,75 +70,75 @@ function shift_scheduler_schema() {
   ); //closes the "$schema['shift_scheduler_slots'] = array(" line
 
   $schema['shift_scheduler_slot_times'] = array(
-    'description' => t('Defines the shifts that are automatically filled in in each slot when days are added to the schedule'),
+    'description' => 'Defines the shifts that are automatically filled in in each slot when days are added to the schedule',
     'fields' => array(
       'slot_time_id' => array(
-        'description' => t('An arbitrary unique identifier for each slot time'),
+        'description' => 'An arbitrary unique identifier for each slot time',
         'type' => 'serial',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
       'slot_id' => array(
-        'description' => t('The slot id to which this shift should be added'),
+        'description' => 'The slot id to which this shift should be added',
         'type' => 'int',
         'size' => 'tiny',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
       'start_time' => array(
-        'description' => t('The start time for a shift.'),
+        'description' => 'The start time for a shift.',
         'type' => 'datetime',
         'not null' => TRUE,
       ),
       'end_time' => array(
-        'description' => t('The start time for a shift.'),
+        'description' => 'The start time for a shift.',
         'type' => 'datetime',
         'not null' => TRUE,
       ),
       'monday' => array(
-        'description' => t('Whether the shift occurs on this day of the week'),
+        'description' => 'Whether the shift occurs on this day of the week',
         'type' => 'int',
         'size' => 'tiny',
         'not null' => TRUE,
         'unsigned' => TRUE,
       ),
       'tuesday' => array(
-        'description' => t('Whether the shift occurs on this day of the week'),
+        'description' => 'Whether the shift occurs on this day of the week',
         'type' => 'int',
         'size' => 'tiny',
         'not null' => TRUE,
         'unsigned' => TRUE,
       ),
       'wednesday' => array(
-        'description' => t('Whether the shift occurs on this day of the week'),
+        'description' => 'Whether the shift occurs on this day of the week',
         'type' => 'int',
         'size' => 'tiny',
         'not null' => TRUE,
         'unsigned' => TRUE,
       ),
       'thursday' => array(
-        'description' => t('Whether the shift occurs on this day of the week'),
+        'description' => 'Whether the shift occurs on this day of the week',
         'type' => 'int',
         'size' => 'tiny',
         'not null' => TRUE,
         'unsigned' => TRUE,
       ),
       'friday' => array(
-        'description' => t('Whether the shift occurs on this day of the week'),
+        'description' => 'Whether the shift occurs on this day of the week',
         'type' => 'int',
         'size' => 'tiny',
         'not null' => TRUE,
         'unsigned' => TRUE,
       ),
       'saturday' => array(
-        'description' => t('Whether the shift occurs on this day of the week'),
+        'description' => 'Whether the shift occurs on this day of the week',
         'type' => 'int',
         'size' => 'tiny',
         'not null' => TRUE,
         'unsigned' => TRUE,
       ),
       'sunday' => array(
-        'description' => t('Whether the shift occurs on this day of the week'),
+        'description' => 'Whether the shift occurs on this day of the week',
         'type' => 'int',
         'size' => 'tiny',
         'not null' => TRUE,
@@ -149,17 +149,17 @@ function shift_scheduler_schema() {
   );
 
   $schema['shift_scheduler_slot_roles'] = array(
-    'description' => t('Defines the roles that are elligible to fill each slot.'),
+    'description' => 'Defines the roles that are elligible to fill each slot.',
     'fields' => array(
       'slot_id' => array(
-        'description' => t('The slot id of the slot for which the role is eligible'),
+        'description' => 'The slot id of the slot for which the role is eligible',
         'type' => 'int',
         'size' => 'tiny',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
       'rid' => array(
-        'description' => t('The role ide of the role that is elligible to fill the slot.'),
+        'description' => 'The role ide of the role that is elligible to fill the slot.',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
@@ -178,30 +178,30 @@ function shift_scheduler_update_6200() {
 
   $ret = array();
   db_change_field($ret, 'shift_scheduler_shifts', 'medic_slot', 'slot_id', array(
-    'description' => t('The position in the duty crew.'),
+    'description' => 'The position in the duty crew.',
     'type' => 'int',
     'size' => 'tiny',
     'not null' => TRUE,
   )
   );
   db_create_table($ret, 'shift_scheduler_slots', array(
-    'description' => t('Defines the different slots that must be filled in a work day.'),
+    'description' => 'Defines the different slots that must be filled in a work day.',
     'fields' => array(
       'slot_id' => array(
-        'description' => t('An arbitrary unique identifier for each slot'),
+        'description' => 'An arbitrary unique identifier for each slot',
         'type' => 'serial',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
       'display_name' => array(
-        'description' => t('e.g. Supervisor'),
+        'description' => 'The user-visible name for the slot, e.g. Supervisor',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
         'default' => '',
       ),
       'status' => array(
-        'description' => t('0 - Active, 0 - Deactivated'),
+        'description' => '0 - Active, 1 - Deactivated',
         'size' => 'tiny',
         'type' => 'int',
         'not null' => FALSE,
@@ -212,28 +212,28 @@ function shift_scheduler_update_6200() {
   )
   );
   db_create_table($ret, 'shift_scheduler_slot_times', array(
-    'description' => t('Defines the shifts that are automatically filled in in each slot when days are added to the schedule'),
+    'description' => 'Defines the shifts that are automatically filled in in each slot when days are added to the schedule'),
     'fields' => array(
       'slot_time_id' => array(
-        'description' => t('An arbitrary unique identifier for each slot time'),
+        'description' => 'An arbitrary unique identifier for each slot time',
         'type' => 'serial',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
       'slot_id' => array(
-        'description' => t('The slot id to which this shift should be added'),
+        'description' => 'The slot id to which this shift should be added',
         'type' => 'int',
         'size' => 'tiny',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
       'start_time' => array(
-        'description' => t('The start time for a shift.'),
+        'description' => 'The start time for a shift.',
         'type' => 'datetime',
         'not null' => TRUE,
       ),
       'end_time' => array(
-        'description' => t('The start time for a shift.'),
+        'description' => 'The start time for a shift.',
         'type' => 'datetime',
         'not null' => TRUE,
       ),
@@ -243,17 +243,17 @@ function shift_scheduler_update_6200() {
   );
 
   db_create_table($ret, 'shift_scheduler_slot_roles', array(
-    'description' => t('Defines the roles that are elligible to fill each slot.'),
+    'description' => 'Defines the roles that are elligible to fill each slot.',
     'fields' => array(
       'slot_id' => array(
-        'description' => t('The slot id of the slot for which the role is eligible'),
+        'description' => 'The slot id of the slot for which the role is eligible',
         'type' => 'int',
         'size' => 'tiny',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
       'rid' => array(
-        'description' => t('The role ide of the role that is elligible to fill the slot.'),
+        'description' => 'The role ide of the role that is elligible to fill the slot.',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
@@ -269,7 +269,7 @@ function shift_scheduler_update_6200() {
   }
 
   db_change_field($ret, 'shift_scheduler_shifts', 'uid', 'uid', array(
-    'description' => t('A uid pointing to the volunteer that took the shift'),
+    'description' => 'A uid pointing to the volunteer that took the shift',
     'type' => 'int',
     'not null' => FALSE,
     'unsigned' => FALSE,
@@ -277,7 +277,7 @@ function shift_scheduler_update_6200() {
 
 
   db_add_field($ret, 'shift_scheduler_slot_times', 'monday', array(
-    'description' => t('Whether the shift occurs on this day of the week'),
+    'description' => 'Whether the shift occurs on this day of the week',
     'type' => 'int',
     'size' => 'tiny',
     'not null' => TRUE,
@@ -285,7 +285,7 @@ function shift_scheduler_update_6200() {
     'initial' => 1,
   ));
   db_add_field($ret, 'shift_scheduler_slot_times', 'tuesday', array(
-    'description' => t('Whether the shift occurs on this day of the week'),
+    'description' => 'Whether the shift occurs on this day of the week',
     'type' => 'int',
     'size' => 'tiny',
     'not null' => TRUE,
@@ -293,7 +293,7 @@ function shift_scheduler_update_6200() {
     'initial' => 1,
   ));
   db_add_field($ret, 'shift_scheduler_slot_times', 'wednesday', array(
-    'description' => t('Whether the shift occurs on this day of the week'),
+    'description' => 'Whether the shift occurs on this day of the week',
     'type' => 'int',
     'size' => 'tiny',
     'not null' => TRUE,
@@ -301,7 +301,7 @@ function shift_scheduler_update_6200() {
     'initial' => 1,
   ));
   db_add_field($ret, 'shift_scheduler_slot_times', 'thursday', array(
-    'description' => t('Whether the shift occurs on this day of the week'),
+    'description' => 'Whether the shift occurs on this day of the week',
     'type' => 'int',
     'size' => 'tiny',
     'not null' => TRUE,
@@ -309,7 +309,7 @@ function shift_scheduler_update_6200() {
     'initial' => 1,
   ));
   db_add_field($ret, 'shift_scheduler_slot_times', 'friday', array(
-    'description' => t('Whether the shift occurs on this day of the week'),
+    'description' => 'Whether the shift occurs on this day of the week',
     'type' => 'int',
     'size' => 'tiny',
     'not null' => TRUE,
@@ -317,7 +317,7 @@ function shift_scheduler_update_6200() {
     'initial' => 1,
   ));
   db_add_field($ret, 'shift_scheduler_slot_times', 'saturday', array(
-    'description' => t('Whether the shift occurs on this day of the week'),
+    'description' => 'Whether the shift occurs on this day of the week',
     'type' => 'int',
     'size' => 'tiny',
     'not null' => TRUE,
@@ -325,7 +325,7 @@ function shift_scheduler_update_6200() {
     'initial' => 1,
   ));
   db_add_field($ret, 'shift_scheduler_slot_times', 'sunday', array(
-    'description' => t('Whether the shift occurs on this day of the week'),
+    'description' => 'Whether the shift occurs on this day of the week',
     'type' => 'int',
     'size' => 'tiny',
     'not null' => TRUE,
