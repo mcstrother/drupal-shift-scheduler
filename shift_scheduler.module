@@ -1412,7 +1412,7 @@ function shift_scheduler_admin_default_shifts_submit($form, &$form_state) {
     // If both the begin and end time are blanked, delete the default shift
     if (strlen($ss) == 0 && strlen($es) == 0) {
       db_query('DELETE FROM {shift_scheduler_slot_times} WHERE slot_time_id=%d', $slot_time_id);
-      drupal_set_message(t('Default shift was deleted'));
+      drupal_set_message(t('Default shift was deleted.'));
     }
     $start_time = mktime((int) ($ss[0] . $ss[1]), (int) ($ss[2] . $ss[3]));
     $end_time = mktime((int) ($es[0] . $es[1]), (int) ($es[2] . $es[3]));
@@ -1473,7 +1473,7 @@ function shift_scheduler_admin_default_shifts_submit($form, &$form_state) {
       'sunday' => $weekday[7],
     );
     drupal_write_record('shift_scheduler_slot_times', $new_record);
-    drupal_set_message(t('New default shift added'));
+    drupal_set_message(t('New default shift added.'));
   }
 }
 
