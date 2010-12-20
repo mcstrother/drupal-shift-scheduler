@@ -71,7 +71,7 @@ function _shift_scheduler_write_date_row(&$schedule_rows, $slot_cells, $timestam
  * @ingroup forms
  */
 function shift_scheduler_old_schedule_form() {
-  // read dates from the url
+  // Read dates from the url.
   if ($_GET['sday'] && $_GET['smon'] && $_GET['syear']) {
     $start_date = array(
       'year' => $_GET['syear'],
@@ -118,10 +118,10 @@ function shift_scheduler_old_schedule_form() {
  * @see shift_scheduler_old_schedule_form_submit()
  */
 function shift_scheduler_old_schedule_form_validate($form, &$form_state) {
-  // get the day, month, and year
+  // Get the day, month, and year.
   $start = $form_state['values']['start_date'];
   $end   = $form_state['values']['end_date'];
-  // convert to seconds
+  // Convert to seconds.
   $start = mktime(0, 0, 0, $start['month'], $start['day'], $start['year']);
   $end   = mktime(0, 0, 0, $end['month'], $end['day'], $end['year']);
   if ($start > $end) {
@@ -196,8 +196,8 @@ function _shift_scheduler_can_claim($user_uid, $shift_id) {
           && variable_get('shift_scheduler_claim_open_shifts', 0) == 1
           && ($shift_info->uid == NULL || $shift_info->uid == 0)
           && (strtotime($shift_info->start_time) > (time() - 60 * 60 * 4))
-          && (db_fetch_object(db_query("SELECT u.uid, u.name, ur.rid FROM {users} AS u INNER JOIN {users_roles} AS ur ON ur.uid = u.uid INNER JOIN {shift_scheduler_slot_roles} AS sssr ON ur.rid = sssr.rid WHERE sssr.slot_id = %d AND u.uid = %d", $shift_info->slot_id, $user_uid)) || //check that user has an elligible role
-          db_fetch_object(db_query("SELECT rid FROM {shift_scheduler_slot_roles} WHERE slot_id=%d AND rid=2", $shift_info->slot_id))//the 'authenticated user' role (rid=2) isn't listed explicitly in {users_roles} so we check separatrely here
+          && (db_fetch_object(db_query("SELECT u.uid, u.name, ur.rid FROM {users} AS u INNER JOIN {users_roles} AS ur ON ur.uid = u.uid INNER JOIN {shift_scheduler_slot_roles} AS sssr ON ur.rid = sssr.rid WHERE sssr.slot_id = %d AND u.uid = %d", $shift_info->slot_id, $user_uid)) || // Check that user has an elligible role.
+          db_fetch_object(db_query("SELECT rid FROM {shift_scheduler_slot_roles} WHERE slot_id=%d AND rid=2", $shift_info->slot_id))//The 'authenticated user' role (rid=2) isn't listed explicitly in {users_roles} so we check separatrely here.
               ));
   return $out;
 }
@@ -223,7 +223,7 @@ function _shift_scheduler_can_claim($user_uid, $shift_id) {
  */
 function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t) {
   global $user;
-  //get the volunteer's name
+  //Get the volunteer's name.
   $name = t("Open Shift");
   if ($uid == -1) {
     $name = t("Closed Shift");
@@ -235,7 +235,7 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
   $time = date('Hi', $start_time_t) . ' - ' . date('Hi', $end_time_t);
 
   // If the user has the correct permissions, and the shift didn't occur too far
-  // in the past (4 hours), make the text into a link so the shift can be edited
+  // in the past (4 hours), make the text into a link so the shift can be edited.
   if (user_access('edit shift schedule')
        && $start_time_t > (time() - 60 * 60 * 4)) {
     $options = array('query' => "shift=$shift_id");
@@ -244,12 +244,12 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
       $options['attributes'] = array('style' => 'color: #FF0000');
     }
     elseif ($uid == -1) {
-      $options['attributes'] = array('style' => 'color: #008000'); //make the link green
+      $options['attributes'] = array('style' => 'color: #008000'); //Make the link green.
     }
     $link_page = 'shift_scheduler/change_shift';
   }
-  // if claiming shifts is enabled and the shift is open, then allow the user to
-  // claim it
+  // Ff claiming shifts is enabled and the shift is open, then allow the user to
+  // claim it.
   elseif (_shift_scheduler_can_claim($user->uid, $shift_id)) {
     $options = array(
       'query' => array(
@@ -261,8 +261,8 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
     );
     $link_page = 'shift_scheduler';
   }
-  // if relinquishing shifts is enabled and the shift belongs to this user,
-  // allow user to relinquish it
+  // If relinquishing shifts is enabled and the shift belongs to this user,
+  // allow user to relinquish it.
   elseif ($user->uid == $uid
            && $user->uid != 0
            && variable_get('shift_scheduler_relinquish_shifts', 0) == 1
@@ -293,7 +293,7 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
   }
 
   if ($uid == 0 || $uid == NULL) {
-    //if it's still an open shift, make it red and bold
+    //If it's still an open shift, make it red and bold.
     $shift_text = '<strong><font  color="Red">' . $shift_text . '</font></strong>';
   }
   elseif ($uid == -1) {
@@ -319,60 +319,60 @@ function shift_scheduler_schedule() {
   $page_content = '';
   $page_content .= drupal_get_form('shift_scheduler_old_schedule_form');
   $has_content = FALSE;
-  // get access to global variable representing the current user
+  // Get access to global variable representing the current user.
   global $user;
-  // handle claiming open shifts
+  // Handle claiming open shifts.
   if ($_GET['claim'] && $_GET['uid'] == $user->uid && $_GET['shift_id']
        && variable_get('shift_scheduler_claim_open_shifts', FALSE)
        && _shift_scheduler_can_claim($user->uid, $_GET['shift_id'])) {
     db_query('UPDATE {shift_scheduler_shifts} SET uid=%d WHERE shift_id=%d', $user->uid, (int) $_GET['shift_id']);
   }
-  // handle relinquishing shifts
+  // Handle relinquishing shifts.
   elseif ($_GET['relinquish'] && $_GET['shift_id']
            && variable_get('shift_scheduler_relinquish_shifts', FALSE)) {
     $shift_info = db_fetch_object(db_query('SELECT uid FROM {shift_scheduler_shifts} WHERE shift_id = %d', $_GET['shift_id']));
-    // ensure that user is trying to relinquish his own shift
+    // Ensure that user is trying to relinquish his own shift.
     if ($shift_info->uid == $user->uid) {
-      //set to open shift
+      //Set to open shift.
       db_query('UPDATE {shift_scheduler_shifts} SET uid=%d WHERE shift_id=%d', NULL, $_GET['shift_id']);
     }
   }
 
-  // get start time
+  // Get start time.
   date_default_timezone_set('CST');
   $today = getdate();
-  // if specified in the URL, specify the time on which to start looking for
-  // shifts
+  // If specified in the URL, specify the time on which to start looking for
+  // shifts.
   if ($_GET['sday'] && $_GET['smon'] && $_GET['syear']) {
     $midnight = mktime(0, 0, 0, (int) $_GET['smon'], (int) $_GET['sday'], (int) $_GET['syear']);
   }
-  // otherwise, just start at yesterday
+  // Otherwise, just start at yesterday.
   else {
     $midnight = mktime(0, 0, 0, $today['mon'], $today['mday'], $today['year']) - 60 * 60 * 24;
   }
 
-  // get end time
-  // if specified in the URL, specify the time on which to start looking for
-  // shifts
+  // Get end time.
+  // If specified in the URL, specify the time on which to start looking for
+  // shifts.
   if ($_GET['eday'] && $_GET['emon'] && $_GET['eyear']) {
     $end_time = mktime(0, 0, 0, (int) $_GET['emon'], (int) $_GET['eday'] + 1, (int) $_GET['eyear']);
   }
-  // if no end time specified, pick 10 years from today
+  // If no end time specified, pick 10 years from today.
   else {
     $end_time = mktime(0, 0, 0, $today['mon'], $today['mday'], (int) $today['year'] + 10);
   }
-  //get the shifts to display
+  //Get the shifts that will be displayed.
   $query = "SELECT uid, start_time, end_time, ss_shifts.slot_id, shift_id FROM " .
     "{shift_scheduler_shifts} AS ss_shifts INNER JOIN {shift_scheduler_slots} AS ss_slots ON ss_shifts.slot_id=ss_slots.slot_id " .
     "WHERE start_time > '%s' AND ss_slots.status=%d AND start_time < '%s' " .
     "ORDER BY ss_shifts.start_time, ss_shifts.slot_id";
   $queryResult = db_query($query, date("Y-m-d H:i:s", $midnight), 0, date("Y-m-d H:i:s", $end_time));
 
-  // move midnight to midnight on the day after the first day to be displayed
+  // Move midnight to midnight on the day after the first day to be displayed.
   $midnight = $midnight + (60 * 60 * 24);
 
-  // iterate over the rows returned by the query, writing
-  // the relevant data to the page content
+  // Iterate over the rows returned by the query, writing
+  // the relevant data to the page content.
 
   $schedule_header = array();
   $schedule_header[] = array(
@@ -380,8 +380,8 @@ function shift_scheduler_schedule() {
     'valign' => 'top',
   );
 
-  //get the slot names and the number of slots
-  $slots_result = db_query('SELECT slot_id, display_name FROM {shift_scheduler_slots} WHERE status=0 ORDER BY {shift_scheduler_slots}.display_name'); //active slots only
+  //Get the slot names and the number of slots.
+  $slots_result = db_query('SELECT slot_id, display_name FROM {shift_scheduler_slots} WHERE status=0 ORDER BY {shift_scheduler_slots}.display_name'); // Get only the active slots.
   $slot_ids = array();
   while ($slot_row = db_fetch_object($slots_result)) {
     $slot_ids[] = $slot_row->slot_id;
@@ -393,7 +393,7 @@ function shift_scheduler_schedule() {
   $schedule_rows = array();
   $volunteer_cells = array();
   foreach ($slot_ids as $slot_id) {
-    //init $volunteer_cells
+    //Initialize $volunteer_cells.
     $volunteer_cells[$slot_id] = '';
   }
   while ( $row = db_fetch_object($queryResult)) {
@@ -401,21 +401,21 @@ function shift_scheduler_schedule() {
     $start_time_t = strtotime($row->start_time);
     $end_time_t = strtotime($row->end_time);
     if ($start_time_t > $midnight) {
-      //a new day -> write the row and reset the variables appropriately
+      //This is a new day, so write the row and reset the variables appropriately.
       _shift_scheduler_write_date_row($schedule_rows, $volunteer_cells, $midnight -10, $slot_ids);
-      $midnight = mktime(0, 0, 0, date('n', $start_time_t), date('j', $start_time_t) + 1, date('Y', $start_time_t) ); //move $midnight to the midnight after the start time
+      $midnight = mktime(0, 0, 0, date('n', $start_time_t), date('j', $start_time_t) + 1, date('Y', $start_time_t) ); //Move $midnight to the midnight after the start time.
       foreach ($slot_ids as $slot_id) {
-        //init $volunteer_cells
+        //Initialize $volunteer_cells.
         $volunteer_cells[$slot_id] = '';
       }
     }
     $shift_text = _schedule_format_shift_text($row->uid, $row->shift_id, $start_time_t, $end_time_t);
     $volunteer_cells[$row->slot_id] .= '<p> ' . $shift_text .  "</p>";
   }
-  _shift_scheduler_write_date_row($schedule_rows, $volunteer_cells, $midnight -10, $slot_ids); //write the last day
+  _shift_scheduler_write_date_row($schedule_rows, $volunteer_cells, $midnight -10, $slot_ids); //Write the last day.
 
 
-  //display something if there is no content on the page
+  //Display something if there is no content on the page.
   if ( !$has_content) {
     $page_content .= '<p><strong>' . t('There are no shifts to display in this date range.') . '</strong></p>';
   }
@@ -464,27 +464,27 @@ function shift_scheduler_create_days_form($form_state) {
  */
 function shift_scheduler_create_days_form_validate($form, &$form_state) {
   $result = db_query('SELECT * FROM {shift_scheduler_slot_times} AS ssst INNER JOIN {shift_scheduler_slots} AS sss ON ssst.slot_id=sss.slot_id WHERE sss.status=%d', 0);
-  //get start date from form
+  //Get the start date from the form.
   $sday = $form_state['values']['start_date']['day'];
   $smon = $form_state['values']['start_date']['month'];
   $syear = $form_state['values']['start_date']['year'];
   $eday = $form_state['values']['end_date']['day'];
   $emon = $form_state['values']['end_date']['month'];
   $eyear = $form_state['values']['end_date']['year'];
-  $num_days = (mktime(0, 0, 0, $emon, $eday, $eyear) -  mktime(0, 0, 0, $smon, $sday, $syear)) / (60 * 60 * 24) + 1; //total number of days being added
+  $num_days = (mktime(0, 0, 0, $emon, $eday, $eyear) -  mktime(0, 0, 0, $smon, $sday, $syear)) / (60 * 60 * 24) + 1; //Compute and save the total number of days being added.
 
   while ($slot_time = db_fetch_object($result)) {
     for ($i = 0; $i < $num_days; $i++) {
       $start_time = mktime((int) ($slot_time->start_time[11] . $slot_time->start_time[12]), (int) ($slot_time->start_time[14] . $slot_time->start_time[15]), 0, $smon, $sday + $i, $syear);
       $end_time = mktime((int) ($slot_time->end_time[11] . $slot_time->end_time[12]), (int) ($slot_time->end_time[14] . $slot_time->end_time[15]), 0, $smon, $sday + $i, $syear);
       if ($end_time < $start_time) {
-        //infer if end time is on the next day
+        //Infer if end time is on the next day.
         $end_time = $end_time + 60 * 60 * 24;
       }
       if ($slot_time->{strtolower(date('l', $start_time))}) {
-        //check if the shift should be created by the day of the week
-        $sts = date("Y-m-d H:i:00", $start_time); //start time string
-        $ets = date("Y-m-d H:i:00", $end_time); //start time string
+        //Check if the shift should be created by the day of the week.
+        $sts = date("Y-m-d H:i:00", $start_time); //sts stands for start time string.
+        $ets = date("Y-m-d H:i:00", $end_time); //ets stands for end time string.
         if (db_fetch_object(db_query("SELECT shift_id FROM {shift_scheduler_shifts} WHERE slot_id=%d AND start_time='%s' AND end_time='%s'", $slot_time->slot_id, $sts, $ets))) {
           form_set_error('start_date', t('Adding days failed because adding this date range results in the creation of duplicate shifts'));
         }
