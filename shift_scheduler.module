@@ -1142,11 +1142,11 @@ function shift_scheduler_admin_slot_submit($form, &$form_state) {
     db_query("UPDATE {shift_scheduler_slots} SET display_name = '%s' WHERE slot_id = %d", $form_state['values']['name'], $form_state['values']['slot_id']);
     db_query("UPDATE {shift_scheduler_slots} SET status = %d WHERE slot_id = %d", $form_state['values']['status'], $form_state['values']['slot_id']);
     db_query("DELETE FROM {shift_scheduler_slot_roles} WHERE slot_id = %d", $form_state['values']['slot_id']);
-
     // update eligible roles
     for ($i = 0; $i < $form_state['values']['num_eligible'] + 1; $i++) {
       if ($form_state['values'][$i] != 1) {
-        db_query("INSERT INTO {shift_scheduler_slot_roles} (slot_id, rid) VALUES (%d, %d)", $form_state['values']['slot_id'], $form_state['values'][$i]);
+	$new_record = array('slot_id' => $form_state['values']['slot_id'], 'rid' => $form_state['values'][$i]);
+	drupal_write_record('shift_scheduler_slot_roles', $new_record);
       }
     }
     drupal_set_message(t('The slot has been updated.'));
@@ -1160,11 +1160,13 @@ function shift_scheduler_admin_slot_submit($form, &$form_state) {
     drupal_set_message(t('The slot and all of its associated shifts have been deleted.'));
   }
   elseif ($form_state['values']['op'] == t('Add slot')) {
-    db_query("INSERT INTO {shift_scheduler_slots} (display_name, status) VALUES ('%s', 0)", $form_state['values']['name']);
+    $new_record = array('display_name'=>$form_state['values']['name'], 'status'=>0);
+    drupal_write_record('shift_scheduler_slots', $new_record);
     $slot_info = db_fetch_object(db_query("SELECT slot_id FROM {shift_scheduler_slots} WHERE display_name ='%s'", $form_state['values']['name']));
 
     // by default allow any authenticated user to be placed in a slot
-    db_query("INSERT INTO {shift_scheduler_slot_roles} (slot_id, rid) VALUES (%d, 2)", $slot_info->slot_id);
+    $new_roles_record = array('slot_id'=>$slot_info->slot_id, 'rid'=>2);
+    drupal_write_record('shift_scheduler_slot_roles', $new_roles_record);
     drupal_set_message(t('The slot has been added.'));
   }
 }
