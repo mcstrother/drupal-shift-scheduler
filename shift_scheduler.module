@@ -611,13 +611,13 @@ function shift_scheduler_change_shift_form(&$form_state) {
   );
   $form['split_time'] = array(
     '#type' => 'textfield',
-    '#title' => t('Split Time'),
+    '#title' => t('Split time'),
     '#size' => 10,
     '#maxlength' => 4,
   );
   $form['secondary_volunteer'] = array(
     '#type' => 'select',
-    '#title' => t('Secondary Volunteer'),
+    '#title' => t('Secondary volunteer'),
     '#default_value' => 0,
     '#options' => $options,
     '#description' => t("The volunteer to take the second part of the shift.  Leave this blank unless you're splitting the shift."),
@@ -1037,7 +1037,7 @@ function shift_scheduler_admin_slot_form() {
     while ($row = db_fetch_object($result)) {
       $form[$i -1] = array(
         '#type' => 'select',
-        '#title' => t('Role ' . $i),
+        '#title' => t('Role !number', array('!number'=> $i)),
         '#options' => $role_array,
         '#default_value' => $row->rid,
       );
@@ -1046,7 +1046,7 @@ function shift_scheduler_admin_slot_form() {
     // an extra row to add another eligible role
     $form[$i -1] = array(
       '#type' => 'select',
-      '#title' => t('New Eligible Role'),
+      '#title' => t('New eligible role'),
       '#description' => t('To add a new eligible role, select one from this menu.'),
       '#options' => $role_array,
     );
@@ -1200,7 +1200,7 @@ function shift_scheduler_admin_default_shifts_form(&$form_state) {
   $form['instructions'] = array(
     '#type' => 'item',
     '#title' => t('Instructions'),
-    '#description' => t($instructions),
+    '#description' => $instructions,
   );
   $last_row = NULL;
 
@@ -1208,7 +1208,7 @@ function shift_scheduler_admin_default_shifts_form(&$form_state) {
   while ($row = db_fetch_object($result)) {
     $form[$i -1] = array(
       '#type' => 'item',
-      '#title' => t('Default Shift ' . $i),
+      '#title' => t('Default shift !number', array('!number'=> $i)),
       '#tree' => TRUE,
     );
     $weekday_default = array();
@@ -1229,7 +1229,7 @@ function shift_scheduler_admin_default_shifts_form(&$form_state) {
     }
     $form[$i -1]['weekday'] = array(
       '#type' => 'checkboxes',
-      '#title' => t('days of week'),
+      '#title' => t('Days of week'),
       '#description' => t('The days of the week for the shift.'),
       '#options' => array(
         1 => t('Monday'),
@@ -1252,14 +1252,14 @@ function shift_scheduler_admin_default_shifts_form(&$form_state) {
     );
     $form[$i -1]['start_time'] = array(
       '#type' => 'textfield',
-      '#title' => t('start time'),
+      '#title' => t('Start time'),
       '#size' => 10,
       '#maxlength' => 4,
       '#default_value' => ($row->start_time[11] . $row->start_time[12] . $row->start_time[14] . $row->start_time[15]),
     );
     $form[$i -1]['end_time'] = array(
       '#type' => 'textfield',
-      '#title' => t('end time'),
+      '#title' => t('End time'),
       '#size' => 10,
       '#maxlength' => 4,
       '#default_value' => ($row->end_time[11] . $row->end_time[12] . $row->end_time[14] . $row->end_time[15]),
@@ -1281,7 +1281,7 @@ function shift_scheduler_admin_default_shifts_form(&$form_state) {
   $form['new_time'] = array(
     '#name' => 'new_time',
     '#type' => 'item',
-    '#title' => t('New Time'),
+    '#title' => t('New time'),
     '#description' => t('Fill in times here to create a new default time.'),
     '#tree' => TRUE,
   );
@@ -1294,7 +1294,7 @@ function shift_scheduler_admin_default_shifts_form(&$form_state) {
   }
   $form['new_time']['weekday'] = array(
     '#type' => 'checkboxes',
-    '#title' => t('days of week'),
+    '#title' => t('Days of week'),
     '#description' => t('The days of the week for the shift'),
     '#options' => array(
       1 => t('Monday'),
@@ -1312,13 +1312,13 @@ function shift_scheduler_admin_default_shifts_form(&$form_state) {
   );
   $form['new_time']['start_time'] = array(
     '#type' => 'textfield',
-    '#title' => t('start time'),
+    '#title' => t('Start time'),
     '#size' => 10,
     '#maxlength' => 4,
   );
   $form['new_time']['end_time'] = array(
     '#type' => 'textfield',
-    '#title' => t('end time'),
+    '#title' => t('End time'),
     '#size' => 10,
     '#maxlength' => 4,
   );
@@ -1500,7 +1500,7 @@ function shift_scheduler_configure_form(&$form_state) {
   $form['claim_open_shifts'] = array(
     '#name' => 'claim_open_shifts',
     '#type' => 'radios',
-    '#title' => t('Claim Open Shifts'),
+    '#title' => t('Claim open shifts'),
     '#description' => t('If enabled, any authenticated user with access to the shift schedule can claim any open shift on the schedule.'),
     '#default_value' => variable_get('shift_scheduler_claim_open_shifts', 0),
     '#options' => array(
@@ -1511,7 +1511,7 @@ function shift_scheduler_configure_form(&$form_state) {
   $form['relinquish_shifts'] = array(
     '#name' => 'relinquish_shifts',
     '#type' => 'radios',
-    '#title' => t('Relinquish Shifts'),
+    '#title' => t('Relinquish shifts'),
     '#description' => t('If enabled, any authenticated user with access to the shift schedule can claim relinquish a shift assigned to him/her, making it an open shift.'),
     '#default_value' => variable_get('shift_scheduler_relinquish_shifts', 0),
     '#options' => array(
