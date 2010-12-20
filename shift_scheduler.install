@@ -344,7 +344,11 @@ function shift_scheduler_install() {
 }
 
 function shift_scheduler_uninstall() {
-  //drop shift_scheduler talbes
+  //drop shift_scheduler tables
   drupal_uninstall_schema('shift_scheduler');
+  //remove variables set by the shift scheduler
+  variable_del('shift_scheduler_claim_open_shifts');
+  variable_del('shift_scheduler_relinquish_shifts');
+  variable_del('shift_scheduler_link_to_profile');
 }
 
