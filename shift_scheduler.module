@@ -240,15 +240,15 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
        && $start_time_t > (time() - 60 * 60 * 4)) {
     $options = array('query' => "shift=$shift_id");
     if ($name == t("Open Shift")) {
-      //make the link red
+      // Make the link red.
       $options['attributes'] = array('style' => 'color: #FF0000');
     }
     elseif ($uid == -1) {
-      $options['attributes'] = array('style' => 'color: #008000'); //Make the link green.
+      $options['attributes'] = array('style' => 'color: #008000'); // Make the link green.
     }
     $link_page = 'shift_scheduler/change_shift';
   }
-  // Ff claiming shifts is enabled and the shift is open, then allow the user to
+  // If claiming shifts is enabled and the shift is open, then allow the user to
   // claim it.
   elseif (_shift_scheduler_can_claim($user->uid, $shift_id)) {
     $options = array(
@@ -380,7 +380,7 @@ function shift_scheduler_schedule() {
     'valign' => 'top',
   );
 
-  //Get the slot names and the number of slots.
+  // Get the slot names and the number of slots.
   $slots_result = db_query('SELECT slot_id, display_name FROM {shift_scheduler_slots} WHERE status=0 ORDER BY {shift_scheduler_slots}.display_name'); // Get only the active slots.
   $slot_ids = array();
   while ($slot_row = db_fetch_object($slots_result)) {
@@ -393,7 +393,7 @@ function shift_scheduler_schedule() {
   $schedule_rows = array();
   $volunteer_cells = array();
   foreach ($slot_ids as $slot_id) {
-    //Initialize $volunteer_cells.
+    // Initialize $volunteer_cells.
     $volunteer_cells[$slot_id] = '';
   }
   while ( $row = db_fetch_object($queryResult)) {
@@ -401,21 +401,21 @@ function shift_scheduler_schedule() {
     $start_time_t = strtotime($row->start_time);
     $end_time_t = strtotime($row->end_time);
     if ($start_time_t > $midnight) {
-      //This is a new day, so write the row and reset the variables appropriately.
+      // This is a new day, so write the row and reset the variables appropriately.
       _shift_scheduler_write_date_row($schedule_rows, $volunteer_cells, $midnight -10, $slot_ids);
-      $midnight = mktime(0, 0, 0, date('n', $start_time_t), date('j', $start_time_t) + 1, date('Y', $start_time_t) ); //Move $midnight to the midnight after the start time.
+      $midnight = mktime(0, 0, 0, date('n', $start_time_t), date('j', $start_time_t) + 1, date('Y', $start_time_t) ); // Move $midnight to the midnight after the start time.
       foreach ($slot_ids as $slot_id) {
-        //Initialize $volunteer_cells.
+        // Initialize $volunteer_cells.
         $volunteer_cells[$slot_id] = '';
       }
     }
     $shift_text = _schedule_format_shift_text($row->uid, $row->shift_id, $start_time_t, $end_time_t);
     $volunteer_cells[$row->slot_id] .= '<p> ' . $shift_text .  "</p>";
   }
-  _shift_scheduler_write_date_row($schedule_rows, $volunteer_cells, $midnight -10, $slot_ids); //Write the last day.
+  _shift_scheduler_write_date_row($schedule_rows, $volunteer_cells, $midnight -10, $slot_ids); // Write the last day.
 
 
-  //Display something if there is no content on the page.
+  // Display something if there is no content on the page.
   if ( !$has_content) {
     $page_content .= '<p><strong>' . t('There are no shifts to display in this date range.') . '</strong></p>';
   }
@@ -464,27 +464,27 @@ function shift_scheduler_create_days_form($form_state) {
  */
 function shift_scheduler_create_days_form_validate($form, &$form_state) {
   $result = db_query('SELECT * FROM {shift_scheduler_slot_times} AS ssst INNER JOIN {shift_scheduler_slots} AS sss ON ssst.slot_id=sss.slot_id WHERE sss.status=%d', 0);
-  //Get the start date from the form.
+  // Get the start date from the form.
   $sday = $form_state['values']['start_date']['day'];
   $smon = $form_state['values']['start_date']['month'];
   $syear = $form_state['values']['start_date']['year'];
   $eday = $form_state['values']['end_date']['day'];
   $emon = $form_state['values']['end_date']['month'];
   $eyear = $form_state['values']['end_date']['year'];
-  $num_days = (mktime(0, 0, 0, $emon, $eday, $eyear) -  mktime(0, 0, 0, $smon, $sday, $syear)) / (60 * 60 * 24) + 1; //Compute and save the total number of days being added.
+  $num_days = (mktime(0, 0, 0, $emon, $eday, $eyear) -  mktime(0, 0, 0, $smon, $sday, $syear)) / (60 * 60 * 24) + 1; // Compute and save the total number of days being added.
 
   while ($slot_time = db_fetch_object($result)) {
     for ($i = 0; $i < $num_days; $i++) {
       $start_time = mktime((int) ($slot_time->start_time[11] . $slot_time->start_time[12]), (int) ($slot_time->start_time[14] . $slot_time->start_time[15]), 0, $smon, $sday + $i, $syear);
       $end_time = mktime((int) ($slot_time->end_time[11] . $slot_time->end_time[12]), (int) ($slot_time->end_time[14] . $slot_time->end_time[15]), 0, $smon, $sday + $i, $syear);
       if ($end_time < $start_time) {
-        //Infer if end time is on the next day.
+        // Infer if end time is on the next day.
         $end_time = $end_time + 60 * 60 * 24;
       }
       if ($slot_time->{strtolower(date('l', $start_time))}) {
-        //Check if the shift should be created by the day of the week.
-        $sts = date("Y-m-d H:i:00", $start_time); //sts stands for start time string.
-        $ets = date("Y-m-d H:i:00", $end_time); //ets stands for end time string.
+        // Check if the shift should be created by the day of the week.
+        $sts = date("Y-m-d H:i:00", $start_time); // sts stands for start time string.
+        $ets = date("Y-m-d H:i:00", $end_time); // ets stands for end time string.
         if (db_fetch_object(db_query("SELECT shift_id FROM {shift_scheduler_shifts} WHERE slot_id=%d AND start_time='%s' AND end_time='%s'", $slot_time->slot_id, $sts, $ets))) {
           form_set_error('start_date', t('Adding days failed because adding this date range results in the creation of duplicate shifts'));
         }
@@ -501,7 +501,7 @@ function shift_scheduler_create_days_form_validate($form, &$form_state) {
  */
 function shift_scheduler_create_days_form_submit($form, &$form_state) {
   $result = db_query('SELECT * FROM {shift_scheduler_slot_times} INNER JOIN {shift_scheduler_slots} ON {shift_scheduler_slot_times}.slot_id={shift_scheduler_slots}.slot_id WHERE {shift_scheduler_slots}.status=%d', 0);
-  //get start and end dates from form
+  // Get start and end dates from form.
   $sday  = $form_state['values']['start_date']['day'];
   $smon  = $form_state['values']['start_date']['month'];
   $syear = $form_state['values']['start_date']['year'];
@@ -509,7 +509,7 @@ function shift_scheduler_create_days_form_submit($form, &$form_state) {
   $emon  = $form_state['values']['end_date']['month'];
   $eyear = $form_state['values']['end_date']['year'];
 
-  // total number of days being added
+  // Compute and save the total number of days being added.
   $num_days = (mktime(0, 0, 0, $emon, $eday, $eyear) - mktime(0, 0, 0, $smon, $sday, $syear)) / (60 * 60 * 24) + 1;
 
   while ($slot_time = db_fetch_object($result)) {
@@ -517,17 +517,17 @@ function shift_scheduler_create_days_form_submit($form, &$form_state) {
       $start_time = mktime((int) ($slot_time->start_time[11] . $slot_time->start_time[12]), (int) ($slot_time->start_time[14] . $slot_time->start_time[15]), 0, $smon, $sday + $i, $syear);
       $end_time   = mktime((int) ($slot_time->end_time[11] . $slot_time->end_time[12]), (int) ($slot_time->end_time[14] . $slot_time->end_time[15]), 0, $smon, $sday + $i, $syear);
 
-      // infer if end time is on the next day
+      // Infer if end_time is on the next day.
       if ($end_time < $start_time) {
         $end_time = $end_time + (60 * 60 * 24);
       }
-      // check if the shift should be created by the day of the week
+      // Check the day of the week to see if shift should be created.
       if ($slot_time->{strtolower(date('l', $start_time))}) {
         $new_record = array(
           'slot_id' => $slot_time->slot_id,
           'start_time' => date("Y-m-d H:i:00", $start_time),
           'end_time' => date("Y-m-d H:i:00", $end_time),
-          // uid is purposely left as null so the shift is open
+          // uid is purposely left as null so the shift is open.
         );
         drupal_write_record('shift_scheduler_shifts', $new_record);
       }
@@ -543,7 +543,7 @@ function shift_scheduler_create_days_form_submit($form, &$form_state) {
  * @see shift_scheduler_menu()
  */
 function shift_scheduler_add_days() {
-  //All we want on the page is the form, so we just automatically generate it
+  // All we want on the page is the form, so we just automatically generate it
   // using the standard drupal methods and return it.
   return drupal_get_form('shift_scheduler_create_days_form');
 }
@@ -560,16 +560,18 @@ function shift_scheduler_add_days() {
  */
 function shift_scheduler_change_shift_form(&$form_state) {
   $shift_id = $_GET['shift'];
-  // Get information about the shift that we're editing
+  // Get information about the shift that we're editing.
   $shift_query_result = db_query("SELECT uid, slot_id, start_time FROM {shift_scheduler_shifts} WHERE shift_id = '%d'", $shift_id);
   $shift_info = db_fetch_object($shift_query_result);
 
-  //Get a list of volunteers who are eligible to take this shift
+  // Get a list of volunteers who are eligible to take this shift.
   $options = array();
   $options[0] = t('Open Shift');
   $options[-1] = t('Closed Shift');
   if (db_fetch_object(db_query('SELECT * FROM {shift_scheduler_slot_roles} WHERE slot_id=%d AND rid=2', $shift_info->slot_id))) {
-    //if authenticated user is an eligible role, get a list of all the users
+    // If the "authenticated user" role is set to be eligible to fill this slot
+    // just get a list of all of the users, since they all must have the "authenticated
+    // user" role.
     $result = db_query('SELECT uid, name FROM {users} WHERE uid>1 ORDER BY name');
     while ($row = db_fetch_object($result)) {
       $options[$row->uid] = $row->name;
@@ -642,79 +644,86 @@ function shift_scheduler_change_shift_form_validate($form, &$form_state) {
   $shift_info = db_fetch_object($shift_query_result);
   $start_time = strtotime($shift_info->start_time);
   $end_time = strtotime($shift_info->end_time);
-  //split is true iff a valid split has been entered
+  // split is true if and only if a valid split has been entered.
   $split_time = 0;
-  $split = ( strlen($fi['split_time']) == 4); //preliminary check that a time and secondary volunteer have been entered
+  $split = ( strlen($fi['split_time']) == 4); // This is a preliminary check that a time and secondary volunteer have been entered.
   if ($split) {
-    //convert the military time entry into a full timestamp
-    $st = $fi['split_time']; //st = split time
+    // Convert the military time entry into a full timestamp.
+    $st = $fi['split_time']; //st stands for "split time".
     $hour = (int) ($st[0] . $st[1]);
     $minute = (int) ($st[2] . $st[3]);
-    //Since the split time doesn't specify a date, we have to
-    //infer the date of the split time based on where it occurs relative to the start time
+    // Since the split time doesn't specify a date, we have to
+    // infer the date of the split time based on where it occurs relative to the start time.
     $temp_split_time = mktime($hour, $minute);
     if ($temp_split_time < mktime((int) date('G', $end_time), (int) date('i', $end_time))) {
-      //if it's before the start time, then both the split and the end times must occur on the next day
+      // If it's before the start time, then both the split and the end times must occur on the next day.
       $split_time = mktime($hour, $minute, 0, date('n', $end_time), date('j', $end_time), date('Y', $end_time));
     }
     else {
-      //split occurs on the same day as the start time
+      // Otherwise the split occurs on the same day as the start time.
       $split_time = mktime($hour, $minute, 0, date('n', $start_time), date('j', $start_time), date('Y', $start_time));
     }
     $form_state['values']['split_time_int'] = $split_time;
   }
   if ($split && !($start_time < $split_time  && $split_time < $end_time)) {
-    //check for an invalid split time
+    // Check for an invalid split time.
     form_set_error('split_time', t('The split time specified falls outside of the valid range.'));
   }
 
 }
 
 /*
- Process the change shift form after it is submitted
- This should not be called directly.  Instead, it is called by
- the drupal core because we specify:
- $form['#submit'][]= 'shift_scheduler_change_shift_form_submit'
- In shift_scheduler_change_shift_form
-
- @param form Provided by the drupal core
- @para form_state Provided by the drupal core.
+ * Form submission handler for shift_scheduler_change_shift_form().
+ * 
+ * As with all form submission handlers, 
+ * this function should not be called directly.
+ * Instead, it is called by the drupal core because we specify
+ * $form['#submit'][]= 'shift_scheduler_change_shift_form_submit'
+ * in shift_scheduler_change_shift_form.
+ * 
+ * @see shift_scheduler_change_shift_form()
+ * 
+ * @ingroup forms
+ * 
+ * @param form Provided by the drupal core
+ * @param form_state Provided by the drupal core.
  */
 function shift_scheduler_change_shift_form_submit($form, &$form_state) {
-  $fi = $form_state['values']; /* fi = "form_info */
+  $fi = $form_state['values']; // fi stands for form_info
 
-  //Get information about the shift that we're editing
+  // Get information about the shift that we're editing.
   $shift_id =  (int) $fi['shift_id'];
   $shift_query_result = db_query("SELECT * FROM {shift_scheduler_shifts} WHERE shift_id = '%d' ", $shift_id);
   $shift_info = db_fetch_object($shift_query_result);
   $start_time = strtotime($shift_info->start_time);
   $end_time = strtotime($shift_info->end_time);
 
-  //split is true iff a valid split has been entered
+  // Split is true if and only if a valid split has been entered.
   $split_time = 0;
-  $split = ( strlen($fi['split_time']) == 4); //preliminary check that a time and secondary volunteer have been entered
+  $split = ( strlen($fi['split_time']) == 4); // Preliminary check that a time and secondary volunteer have been entered.
   if ($split) {
-    //convert the military time entry into a full timestamp
+    // Convert the military time entry into a full timestamp.
     $split_time = $form_state['values']['split_time_int'];
   }
 
 
-  if (!($split)) { //simple case: no split
-    //update the shift
+  if (!($split)) { // Simple case: the user isn't splitting a shift.
+    // Update the shift.
     db_query("UPDATE {shift_scheduler_shifts} SET uid='%d' WHERE shift_id = '%d'", $fi['volunteer'], $shift_info->shift_id  );
-    /*Find the next chronological shift in this slot and redirect to changing it*/
+    // Find the next chronological shift in this slot and redirect to changing it.
     $next_shift_info = db_fetch_object(db_query("SELECT shift_id FROM {shift_scheduler_shifts} WHERE slot_id=%d AND start_time='%s'", $shift_info->slot_id, $shift_info->end_time));
     if ($next_shift_info) {
-      //if there is a next shift, redirect to changing it
+      // If there is a next shift, redirect to changing it.
       $form_state['redirect'] = array('shift_scheduler/change_shift', 'shift=' . ($next_shift_info->shift_id));
     }
     else {
-      //no more shifts in this slot
+      // Otherwise, infer there are no more shifts in this slot
+      // and redirect to the schedule display page.
       $form_state['redirect'] = array('shift_scheduler');
     }
   }
   elseif ($split) {
-    //handle split
+    // Handle split.
     db_query("UPDATE {shift_scheduler_shifts} SET uid=%d, end_time='%s' WHERE shift_id='%d'", $fi['volunteer'], date( 'Y-m-d H:i:s', $split_time), $shift_info->shift_id);
     $new_record = array(
       'uid' => $fi['secondary_volunteer'],
@@ -848,21 +857,16 @@ function shift_scheduler_old_shifts_form_submit($form, &$form_state) {
 
 /**
  * Define the appearance of the old shifts page.
- * Not called by any functions.
- *
- * @ingroup unused
- *
- * @todo Remove this function?
  */
 function shift_scheduler_old_shifts() {
   return drupal_get_form('shift_scheduler_old_shifts_form');
 }
 
 /**
- * Define the appearance of the results page for the shift schedule.
+ * Define the appearance of the results page
+ * which is displayed after the old shifts form
+ * is submitted..
  *
- * @todo What does this function do?
- *   Clean up the SQL statements, they are awfully confusing.
  */
 function shift_scheduler_old_shifts_results() {
   $page_content = '';
@@ -870,8 +874,10 @@ function shift_scheduler_old_shifts_results() {
   $uid        = $_GET['uid'];
   $start_time = $_GET['start_time'];
   $end_time   = $_GET['end_time'];
-  //query the datebase
+  // Query the database.
   if ($_GET['slot_id'] == -1) {
+    // Get all the shifts taken by the given user within
+    // the given date range.
     $result = db_query("SELECT ss_shifts.slot_id, start_time, end_time, display_name \n " .
                        "FROM {shift_scheduler_shifts} AS ss_shifts INNER JOIN {shift_scheduler_slots} AS ss_slots ON ss_slots.slot_id=ss_shifts.slot_id \n " .
                        "WHERE uid=%d AND (start_time>'%s' AND end_time<'%s') \n " .
@@ -883,6 +889,8 @@ function shift_scheduler_old_shifts_results() {
                       );
   }
   else {
+    // Give all the shifts taken by the given user *in the given slot*
+    // within the given date range.
     $result = db_query("SELECT ss_shifts.slot_id, start_time, end_time, display_name \n " .
                        "FROM {shift_scheduler_shifts} AS ss_shifts INNER JOIN {shift_scheduler_slots} AS ss_slots ON ss_slots.slot_id=ss_shifts.slot_id \n " .
                        "WHERE uid=%d AND (start_time>'%s' AND end_time<'%s')  AND ss_shifts.slot_id=%d\n " .
@@ -895,12 +903,12 @@ function shift_scheduler_old_shifts_results() {
                       );
   }
 
-  // count the total amount of duty taken
+  // Count the total amount of duty taken.
   $total_duty = 0;
 
   // write the results of the database query out into a table
 
-  // set up the table headers
+  // Set up the table headers.
   // open the table html tag and add table headers
   $page_content .= '<table class="body-table">
     <tbody>
@@ -951,7 +959,8 @@ function shift_scheduler_old_shifts_results() {
 
 /**
  *
- * @todo Explain what this function does.
+ * Define the apperance of the admin_slots page.
+ * 
  *
  * @ingroup admin
  */
@@ -989,7 +998,6 @@ function shift_scheduler_admin_slots() {
  * @see shift_scheduler_admin_slot_validate()
  * @see shift_scheduler_admin_slot_submit()
  *
- * @todo Explain what this function does.
  *
  * @ingroup forms
  * @ingroup admin
@@ -1091,7 +1099,6 @@ function shift_scheduler_admin_slot_form() {
  * @see shift_scheduler_admin_slot_form()
  * @see shift_scheduler_admin_slot_submit()
  *
- * @todo Explain what this function does.
  *
  * @ingroup admin
  */
@@ -1133,7 +1140,6 @@ function shift_scheduler_admin_slot_validate($form, &$form_state) {
  * @see shift_scheduler_admin_slot_form()
  * @see shift_scheduler_admin_slot_validate()
  *
- * @todo Explain what this function does.
  *
  * @ingroup admin
  */
@@ -1172,8 +1178,7 @@ function shift_scheduler_admin_slot_submit($form, &$form_state) {
 }
 
 /**
- *
- * @todo Explain what this function does.
+ * Define the appearance of the admin_default_shifts page.
  *
  * @ingroup admin
  */
@@ -1248,7 +1253,6 @@ function shift_scheduler_admin_default_shifts_form(&$form_state) {
       ),
     );
     $form[$i -1]['slot_time_id'] = array(
-      // use 'value' rather than 'hidden'
       '#type' => 'value',
       '#value' => $row->slot_time_id,
     );
@@ -1270,13 +1274,11 @@ function shift_scheduler_admin_default_shifts_form(&$form_state) {
     $last_row = $row;
   }
   $form['slot_id'] = array(
-    // use 'value' rather than 'hidden'
     '#type' => 'value',
     '#value' => $slot_id,
   );
   // pass the number of slots that already exist to the form-processing functions
   $form['num_defined'] = array(
-    // use 'value' rather than 'hidden'
     '#type' => 'value',
     '#value' => $i - 1,
   );
