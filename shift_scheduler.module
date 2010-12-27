@@ -1,0 +1,1601 @@
+<?php
+
+/**
+ * @file
+ * 
+ * The shift_scheduler module.
+ */
+
+/**
+ * Implements hook_help().
+ */
+function shift_scheduler_help($path, $arg) {
+  $output = '';
+  switch ($path) {
+    case "admin/help#shift_scheduler":
+      $output = '<p>' . t("Displays the shift schedule managed by shift_scheduler") . '</p>'; // Not too sure about this line. Does it need to be enclosed in a paragraph?
+      break;
+  }
+  return $output;
+}
+
+/**
+ * Implements hook_perm().
+ */
+function shift_scheduler_perm() {
+  return array(
+    'access shift schedule',
+    'edit shift schedule',
+    'administer shift_scheduler',
+    'add to shift schedule',
+  );
+}
+
+/**
+ * Write a table row representing a given day's shifts.
+ * Used as a subroutine in shift_scheduler_schedule().
+ * 
+ * @param page_content
+ *   The page_content so far, to which the table row will be appended.
+ * @param slot_cells
+ *   An array of strings representing the content that should be written
+ *   for each slot.
+ * @param timestamp
+ *   A timestamp that occurs sometime on the day to be written.
+ * @param slot_ids
+ *   An array with all of the slot id numbers.
+ */
+function _write_date_row(&$schedule_rows, $slot_cells, $timestamp, $slot_ids){
+  $row_data = array();
+  $row_data[] = array('data'=>'<strong>' . date('l', $timestamp) . '</strong><br /><strong>'. date('n/j/Y', $timestamp) . '</strong>' ,
+		      'class'=>'schedule-display');
+  foreach($slot_ids as $slot_id) {
+    $row_data[] =  $slot_cells[$slot_id];
+  }
+  $schedule_rows[] = array('data'=>$row_data );
+}
+
+
+
+
+/**
+ * Form builder for displaying the shift schedule between the start and end
+ * dates, inclusive.
+ * 
+ * @see shift_scheduler_old_schedule_form_validate()
+ * @see shift_scheduler_old_schedule_form_submit()
+ * 
+ * @ingroup forms
+ */
+function shift_scheduler_old_schedule_form() {
+  // read dates from the url
+  if($_GET['sday'] && $_GET['smon'] && $_GET['syear']) {
+    $start_date = array(
+      'year'  => $_GET['syear'],
+      'day'   => $_GET['sday'],
+      'month' => $_GET['smon'],
+    );
+  }
+  if($_GET['eday'] && $_GET['emon'] && $_GET['eyear']) {
+    $end_date = array(
+      'year'  => $_GET['eyear'],
+      'day'   => $_GET['eday'],
+      'month' => $_GET['emon'],
+    );
+  }
+  
+  $form = array();
+  $form['start_date'] = array(
+    '#type' => 'date',
+    '#required' => TRUE,
+    '#description' => t('Select a start date to see an old shift schedule.'),
+    '#default_value' => $start_date,
+  );
+  $form['end_date']= array(
+    '#type' => 'date',
+    '#required' => TRUE,
+    '#description' => t('Select an end date to see an old shift schedule.'),
+    '#default_value' => $end_date,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('See old schedule'),
+  );
+  $form['#submit'][] = 'shift_scheduler_old_schedule_form_submit';
+  $form['#validate'][] = 'shift_scheduler_old_schedule_form_validate';
+  return $form;
+}
+
+/**
+ * Form validation handler for shift_scheduler_old_schedule_form().
+ * 
+ * Validate that the start date is less than the end date
+ * 
+ * @see shift_scheduler_old_schedule_form()
+ * @see shift_scheduler_old_schedule_form_submit()
+ */
+function shift_scheduler_old_schedule_form_validate($form, &$form_state) {
+  // get the day, month, and year
+  $start = $form_state['values']['start_date'];
+  $end   = $form_state['values']['end_date'];
+  // convert to seconds
+  $start = mktime(0, 0, 0, $start['month'], $start['day'], $start['year']);
+  $end   = mktime(0, 0, 0, $end['month'], $end['day'], $end['year']);
+  if ($start > $end) {
+    form_set_error("start_date", t("Start date must be less than end date."));
+  }
+}
+
+/**
+ * Form submission handler for shift_scheduler_old_schedule_form().
+ * 
+ * @see shift_scheduler_old_schedule_form()
+ * @see shift_scheduler_old_schedule_form_validate()
+ */
+function shift_scheduler_old_schedule_form_submit($form, &$form_state) {
+  $start = $form_state['values']['start_date'];
+  $end   = $form_state['values']['end_date'];
+  
+  $form_state['redirect'] = array(
+    'shift_scheduler',
+    'sday=' . $start['day'] . '&' .
+    'smon=' . $start['month'] . '&' .
+    'syear=' . $start['year'] . '&' .
+    'eday=' . $end['day'] . '&'.
+    'emon=' . $end['month'] . '&' .
+    'eyear='. $end['year'],
+  );  
+}
+
+/**
+ * Return the name of the user formatted as the first initial of his first name
+ * followed by his last name, as in M. Strother.
+ * If the profile module is not installed or a user has not specified his first
+ * and last name, then return the user name.
+ * 
+ * @param uid
+ *   The user id of the person whose formatted name will be returned.
+ */
+function _schedule_format_name($uid) {
+  $display_name = NULL;
+  if (module_exists('profile')) {
+    $last_name_row  = db_fetch_object(db_query("SELECT value FROM {profile_values} WHERE fid=2 AND uid=%d", $uid));
+    $first_name_row = db_fetch_object(db_query("SELECT value FROM {profile_values} WHERE fid=1 AND uid=%d", $uid));
+    if($first_name_row && $last_name_row) {
+      $first_name    = ucwords($first_name_row->value);
+      $last_name     = ucwords($last_name_row->value);
+      $first_initial = substr($first_name, 0, 1);
+      $display_name  = $first_initial . ". " . $last_name;
+    }
+  }
+  if (is_null($display_name)) {
+    $volunteer_name_result = db_fetch_object(db_query("SELECT name FROM {users} WHERE uid=%d", $uid));
+    $display_name = $volunteer_name_result->name;
+  }
+  return $display_name;
+}
+
+/**
+ * Check to see if a user can claim a shift.
+ *
+ * @param uid
+ *   The uid of the user wanting to claim the shift
+ * @param shift_id
+ *   The shift_id of the shift to be claimed.
+ * 
+ * @return 
+ *   True iff the shift can be claimed by the user
+ */
+
+function _can_claim($user_uid, $shift_id){
+  $shift_info = db_fetch_object(db_query("SELECT slot_id, start_time, end_time, uid FROM {shift_scheduler_shifts} WHERE shift_id = %d", $shift_id));
+  $out = ($user_uid != 0
+          && variable_get('shift_scheduler_claim_open_shifts', 0) == 1
+          && ($shift_info->uid == NULL || $shift_info->uid == 0)
+	  && (strtotime($shift_info->start_time) > (time() - 60 * 60 * 4))
+          && (db_fetch_object(db_query("SELECT {users}.uid, {users}.name, {users_roles}.rid FROM {users} INNER JOIN {users_roles} ON {users_roles}.uid = {users}.uid INNER JOIN {shift_scheduler_slot_roles} ON {users_roles}.rid = {shift_scheduler_slot_roles}.rid WHERE {shift_scheduler_slot_roles}.slot_id = %d AND {users}.uid = %d", $shift_info->slot_id, $user_uid)) || //check that user has an elligible role
+	  db_fetch_object(db_query("SELECT rid FROM {shift_scheduler_slot_roles} WHERE slot_id=%d AND rid=2", $shift_info->slot_id))//the 'authenticated user' role (rid=2) isn't listed explicitly in {users_roles} so we check separatrely here
+	      ));
+  return $out;
+}
+
+
+/**
+ * Format a single shift and make the appropriate link. Called by
+ * shift_scheduler_schedule().
+ * 
+ * @param uid
+ *   The uid of the user filling the shift.
+ * @param shift_id
+ *   The id of the shift.
+ * @param start_time_t
+ *   The start time of the shift in seconds since unix epoch.
+ * @param start_time_t
+ *   The end time of the shift in seconds since unix epoch.
+ * 
+ * @return
+ *   A string with the name and time combined properly and set to be links.
+ * 
+ * @see shift_scheduler_schedule()
+ */
+function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t) {
+  global $user;
+  //get the volunteer's name
+  $name = t("Open Shift");
+  if($uid == -1) {
+    $name = t("Closed Shift");
+  }
+  elseif($uid){
+    $name = _schedule_format_name($uid);
+  }
+  
+  $time = date('Hi', $start_time_t) . ' - ' . date('Hi', $end_time_t);
+  
+  // If the user has the correct permissions, and the shift didn't occur too far
+  // in the past (4 hours), make the text into a link so the shift can be edited
+  if (user_access('edit shift schedule')
+      && $start_time_t > (time() - 60 * 60 * 4)) { 
+    $options = array('query' => "shift=$shift_id");
+    if ($name==t("Open Shift")) {
+      //make the link red
+      $options['attributes'] = array('class' => 'open-shift');
+    }
+    elseif($uid ==-1){
+      $options['attributes'] = array('class' => 'closed-shift'); //make the link green
+    }
+    $link_page = 'shift_scheduler/change_shift';
+  }
+  // if claiming shifts is enabled and the shift is open, then allow the user to
+  // claim it
+  elseif (_can_claim($user->uid, $shift_id)){
+      $options = array(
+        'query' => array(
+          'uid' => $user->uid,
+          'shift_id' => $shift_id,
+          'claim' => TRUE,
+        ),
+        'attributes' => array('class' => 'open-shift'),
+      );
+      $link_page = 'shift_scheduler';
+  }
+  // if relinquishing shifts is enabled and the shift belongs to this user,
+  // allow user to relinquish it
+  elseif ($user->uid == $uid
+	  && $user->uid != 0
+          && variable_get('shift_scheduler_relinquish_shifts', 0) == 1
+          && $start_time_t > (time() - 60 * 60 * 4)) {
+    $options = array(
+      'query' => array(
+        'shift_id' => $shift_id,
+        'relinquish' => TRUE,
+      ),
+    );
+    $link_page = 'shift_scheduler';
+  }
+  
+  if (variable_get('shift_scheduler_link_to_profile', FALSE)) {
+    if ($uid>0) {
+      $name = l($name, 'user' . '/' . $uid);
+    }
+    if ($link_page && $options) {
+      $time = l($time, $link_page, $options);
+    }
+    $shift_text = $name . ' ' . $time;
+  }
+  else{
+    $shift_text = $name . ' ' . $time;
+    if ($link_page && $options) {
+      $shift_text = l($shift_text, $link_page, $options);
+    }
+  }
+
+  if($uid==0||$uid==NULL){//if it's still an open shift, make it red and bold
+    $shift_text = '<span class="open-shift">' . $shift_text .'</span>';
+  }
+  elseif($uid ==-1){
+    $shift_text = '<span class="closed-shift">' . $shift_text .'</span>';
+  }
+  elseif($uid==$user->uid){
+    $shift_text = '<span class="taken-shift">' . $shift_text . '</span>'; 
+  }
+
+  return $shift_text;
+  
+}
+
+/**
+ * Format the display of the shift schedule.
+ * Only used as a callback in shift_scheduler_menu().
+ * 
+ * @see shift_scheduler_menu()
+ * 
+ * @todo use drupal calls to make the table
+ */
+function shift_scheduler_schedule() {
+  $page_content = '';
+  $page_content .= drupal_get_form('shift_scheduler_old_schedule_form');
+  $has_content = FALSE;
+  // get access to global variable representing the current user
+  global $user;
+  // handle claiming open shifts
+  if ($_GET['claim'] && $_GET['uid'] == $user->uid && $_GET['shift_id']
+      && variable_get('shift_scheduler_claim_open_shifts', FALSE) 
+      && _can_claim($user->uid, $_GET['shift_id'])) {
+    db_query('UPDATE {shift_scheduler_shifts} SET uid=%d WHERE shift_id=%d', $user->uid, (int) $_GET['shift_id']);
+  }
+  // handle relinquishing shifts
+  elseif ($_GET['relinquish'] && $_GET['shift_id']
+          && variable_get('shift_scheduler_relinquish_shifts', FALSE)) {
+    $shift_info = db_fetch_object(db_query('SELECT uid FROM {shift_scheduler_shifts} WHERE shift_id = %d', $_GET['shift_id']));
+    // ensure that user is trying to relinquish his own shift
+    if ($shift_info->uid == $user->uid) {
+      //set to open shift
+      db_query('UPDATE {shift_scheduler_shifts} SET uid=%d WHERE shift_id=%d', NULL, $_GET['shift_id']);
+    }
+  }
+  
+  // get start time
+  date_default_timezone_set('CST');
+  $today = getdate();
+  // if specified in the URL, specify the time on which to start looking for
+  // shifts
+  if ($_GET['sday'] && $_GET['smon'] && $_GET['syear']) {
+    $midnight = mktime(0, 0, 0, (int) $_GET['smon'], (int) $_GET['sday'], (int) $_GET['syear']);    
+  }
+  // otherwise, just start at yesterday
+  else {
+    $midnight = mktime(0, 0, 0, $today['mon'], $today['mday'], $today['year']) - 60 * 60 * 24;
+  }
+  
+  // get end time
+  // if specified in the URL, specify the time on which to start looking for
+  // shifts
+  if ($_GET['eday'] && $_GET['emon'] && $_GET['eyear']) {
+    $end_time = mktime(0, 0, 0, (int) $_GET['emon'], (int) $_GET['eday'] + 1, (int) $_GET['eyear']);
+  }
+  // if no end time specified, pick 10 years from today
+  else {
+    $end_time = mktime(0, 0, 0, $today['mon'], $today['mday'], (int) $today['year'] + 10);
+  }
+  //get the shifts to display
+  $query = "SELECT uid, start_time, end_time, {shift_scheduler_shifts}.slot_id, shift_id FROM " .
+    "{shift_scheduler_shifts} INNER JOIN {shift_scheduler_slots} ON {shift_scheduler_shifts}.slot_id={shift_scheduler_slots}.slot_id " .
+    "WHERE start_time > '%s' AND {shift_scheduler_slots}.status=%d AND start_time < '%s' " .
+    "ORDER BY {shift_scheduler_shifts}.start_time, {shift_scheduler_shifts}.slot_id";
+  $queryResult = db_query($query, date("Y-m-d H:i:s", $midnight), 0, date("Y-m-d H:i:s", $end_time));
+  
+  // move midnight to midnight on the day after the first day to be displayed
+  $midnight = $midnight + (60 * 60 * 24);
+  
+  // iterate over the rows returned by the query, writing
+  // the relevant data to the page content
+  
+  $schedule_header = array();
+  $schedule_header[] = array('data'=>t('Date'), 'class'=>'schedule-header');
+  
+  //get the slot names and the number of slots
+  $slots_result = db_query('SELECT slot_id, display_name FROM {shift_scheduler_slots} WHERE status=0 ORDER BY {shift_scheduler_slots}.display_name');//active slots only
+  $slot_ids = array();
+  while($slot_row = db_fetch_object($slots_result)){
+    $slot_ids[] = $slot_row->slot_id;
+    $schedule_header[] = array('data'=> $slot_row->display_name, 'class'=>'schedule-header');
+  }
+  $schedule_rows = array();
+  $volunteer_cells = array();
+  foreach($slot_ids as $slot_id){//init $volunteer_cells
+    $volunteer_cells[$slot_id] = '';
+  }
+  while( $row = db_fetch_object($queryResult)) {
+    $has_content = TRUE;
+    $start_time_t = strtotime($row->start_time);
+    $end_time_t = strtotime($row->end_time);
+    if($start_time_t > $midnight){//a new day -> write the row and reset the variables appropriately
+      _write_date_row($schedule_rows,$volunteer_cells, $midnight-10, $slot_ids);
+      $midnight = mktime(0,0,0,date('n',$start_time_t), date('j',$start_time_t)+1, date('Y',$start_time_t) ); //move $midnight to the midnight after the start time
+      foreach($slot_ids as $slot_id){//init $volunteer_cells
+	$volunteer_cells[$slot_id] = '';
+      }
+    }
+    $shift_text = _schedule_format_shift_text($row->uid, $row->shift_id, $start_time_t, $end_time_t);
+    $volunteer_cells[$row->slot_id] .= '<p> ' . $shift_text .  "</p>"; // Does these really need to be contained within a paragraph tags? It would be more efficient to define a class for the TR and then style it in the CSS.
+  }
+  _write_date_row($schedule_rows,$volunteer_cells, $midnight-10, $slot_ids);//write the last day
+
+
+  //display something if there is no content on the page
+  if ( !$has_content){
+    $page_content .= '<p><strong>' .t('There are no shifts to display in this date range.') . '</strong></p>' ;
+  }
+  else{
+    $page_content .= theme('table',$schedule_header, $schedule_rows);
+  }
+  return $page_content;
+
+}
+
+/**
+ * Form builder for creating new days on the shift schedule.
+ * 
+ * @see shift_scheduler_create_days_form_validate()
+ * @see shift_scheduler_create_days_form_submit()
+ * 
+ * @ingroup forms
+ */
+function shift_scheduler_create_days_form($form_state) {
+  $form = array();
+  $form['start_date'] = array(
+    '#type' => 'date',
+    '#title' => t('Start date'),
+    '#required' => TRUE,
+    '#description' => t('The first date to be created on the shift schedule.'),
+  );
+  $form['end_date'] = array(
+    '#type' => 'date',
+    '#title' => t('End date'),
+    '#required' => TRUE,
+    '#description' => t('The last date to be created on the shift schedule.'),
+  );
+  $form['submit'] = array('#type' => 'submit', '#value' => t('Add days'));
+  $form['#submit'][] = 'shift_scheduler_create_days_form_submit';
+  return $form;
+}
+
+/**
+ * Form validation handler for shift_scheduler_create_days_form().
+ * 
+ * @see shift_scheduler_create_days_form()
+ * @see shift_scheduler_create_days_form_submit()
+ */
+function shift_scheduler_create_days_form_validate($form, &$form_state) {
+  $result = db_query('SELECT * FROM {shift_scheduler_slot_times} INNER JOIN {shift_scheduler_slots} ON {shift_scheduler_slot_times}.slot_id={shift_scheduler_slots}.slot_id WHERE {shift_scheduler_slots}.status=%d',0);
+  //get start date from form
+  $sday = $form_state['values']['start_date']['day'];
+  $smon = $form_state['values']['start_date']['month'];
+  $syear = $form_state['values']['start_date']['year'];
+  $eday = $form_state['values']['end_date']['day'];
+  $emon = $form_state['values']['end_date']['month'];
+  $eyear = $form_state['values']['end_date']['year'];
+  $num_days = (mktime(0,0,0,$emon,$eday,$eyear) -  mktime(0,0,0,$smon,$sday,$syear))/(60*60*24)+1;//total number of days being added
+  
+  while($slot_time = db_fetch_object($result)){
+    for($i = 0; $i < $num_days; $i++){
+      $start_time = mktime((int)($slot_time->start_time[11].$slot_time->start_time[12]), (int)($slot_time->start_time[14].$slot_time->start_time[15]), 0, $smon, $sday+$i, $syear);
+      $end_time = mktime((int)($slot_time->end_time[11].$slot_time->end_time[12]), (int)($slot_time->end_time[14].$slot_time->end_time[15]), 0, $smon, $sday+$i, $syear);
+      if($end_time < $start_time){//infer if end time is on the next day
+	$end_time = $end_time + 60*60*24;
+      }
+      if($slot_time->{strtolower(date('l',$start_time))}){//check if the shift should be created by the day of the week
+	$sts = date ("Y-m-d H:i:00", $start_time);//start time string
+	$ets = date ("Y-m-d H:i:00", $end_time);//start time string
+	if(db_fetch_object(db_query("SELECT shift_id FROM {shift_scheduler_shifts} WHERE slot_id=%d AND start_time='%s' AND end_time='%s'", $slot_time->slot_id,$sts, $ets))){
+	  form_set_error('start_date', t('Adding days failed because adding this date range results in the creation of duplicate shifts'));
+	}
+      }
+    } 
+  }
+}
+
+/**
+ * Form validation handler for shift_scheduler_create_days_form().
+ * 
+ * @see shift_scheduler_create_days_form()
+ * @see shift_scheduler_create_days_form_validate()
+ */
+function shift_scheduler_create_days_form_submit($form, &$form_state) {
+  $result = db_query('SELECT * FROM {shift_scheduler_slot_times} INNER JOIN {shift_scheduler_slots} ON {shift_scheduler_slot_times}.slot_id={shift_scheduler_slots}.slot_id WHERE {shift_scheduler_slots}.status=%d',0);
+  //get start and end dates from form
+  $sday  = $form_state['values']['start_date']['day'];
+  $smon  = $form_state['values']['start_date']['month'];
+  $syear = $form_state['values']['start_date']['year'];
+  $eday  = $form_state['values']['end_date']['day'];
+  $emon  = $form_state['values']['end_date']['month'];
+  $eyear = $form_state['values']['end_date']['year'];
+  
+  // total number of days being added
+  $num_days = (mktime(0, 0, 0, $emon, $eday, $eyear) - mktime(0, 0, 0, $smon, $sday, $syear)) / (60 * 60 * 24) + 1;
+  
+  while ($slot_time = db_fetch_object($result)) {
+    for ($i = 0; $i < $num_days; $i++) {
+      $start_time = mktime((int) ($slot_time->start_time[11].$slot_time->start_time[12]), (int) ($slot_time->start_time[14].$slot_time->start_time[15]), 0, $smon, $sday + $i, $syear);
+      $end_time   = mktime((int) ($slot_time->end_time[11].$slot_time->end_time[12]), (int) ($slot_time->end_time[14].$slot_time->end_time[15]), 0, $smon, $sday + $i, $syear);
+      
+      // infer if end time is on the next day
+      if ($end_time < $start_time) {
+        $end_time = $end_time + (60 * 60 * 24);
+      }
+      // check if the shift should be created by the day of the week
+      if ($slot_time->{strtolower(date('l',$start_time))}) {
+        $new_record = array(
+          'slot_id' => $slot_time->slot_id,
+          'start_time' => date ("Y-m-d H:i:00", $start_time),
+          'end_time' => date ("Y-m-d H:i:00", $end_time),
+          // uid is purposely left as null so the shift is open
+        );
+        drupal_write_record('shift_scheduler_shifts', $new_record);
+      }
+    } 
+  }
+  $form_state['redirect'] = array('shift_scheduler');
+}
+
+/**
+ * Define the appearance of the add_days page.
+ * Only used as a callback in shift_scheduler_menu().
+ * 
+ * @see shift_scheduler_menu()
+ */
+function shift_scheduler_add_days() {
+  //All we want on the page is the form, so we just automatically generate it
+  // using the standard drupal methods and return it.
+  return drupal_get_form('shift_scheduler_create_days_form');
+}
+
+
+/**
+ * Form builder for the change shift page. Use this form by appending the return
+ * value of shift_scheduler_add_days() to your page content.
+ * 
+ * @see shift_scheduler_add_days()
+ * @see shift_scheduler_change_shift_form_submit()
+ * 
+ * @ingroup forms
+ */
+function shift_scheduler_change_shift_form(&$form_state) {
+  $shift_id = $_GET['shift'];
+  // Get information about the shift that we're editing
+  $shift_query_result = db_query("SELECT uid, slot_id, start_time FROM {shift_scheduler_shifts} WHERE shift_id = '%d'", $shift_id);
+  $shift_info = db_fetch_object($shift_query_result);
+  
+  //Get a list of volunteers who are eligible to take this shift
+  $options = array();
+  $options[0] = t('Open Shift');
+  $options[-1] = t('Closed Shift');
+  if(db_fetch_object(db_query('SELECT * FROM {shift_scheduler_slot_roles} WHERE slot_id=%d AND rid=2', $shift_info->slot_id))){//if authenticated user is an eligible role, get a list of all the users
+    $result = db_query('SELECT uid, name FROM {users} WHERE uid>1 ORDER BY name');
+    while($row = db_fetch_object($result)){
+      $options[$row->uid] = $row->name;
+    }
+  }
+  else{
+    $options_query = "SELECT {users}.uid, {users}.name, {users_roles}.rid FROM {users} INNER JOIN {users_roles} ON {users_roles}.uid = {users}.uid INNER JOIN {shift_scheduler_slot_roles} ON {users_roles}.rid = {shift_scheduler_slot_roles}.rid WHERE {shift_scheduler_slot_roles}.slot_id = %d ORDER BY {users}.name";
+    $options_result = db_query($options_query, $shift_info->slot_id);
+    while( $options_row = db_fetch_object($options_result) ){
+      $options[$options_row->uid] = $options_row->name;
+    }
+  }
+  $default_uid = 0;
+  if($shift_info->uid) {
+    $default_uid = $shift_info->uid;
+  }
+  
+  $form = array();
+  $instructions  = t('Select which volunteer is taking the shift from the "Volunteer" menu. ').
+    t('To split the shift between two volunteers, fill the time (in the 24-hour clock) at which the secondary volunteer will take over for the first volunteer in the "Split Time" box. ') .
+    t('An "Open Shift" is a shift that should be filled but no one has volunteered to take it yet. ').
+    t('A "Closed Shift" is a shift which was placed on the schedule, but does not require anyone to take it.');
+  $form['instructions'] = array(
+				'#type' => 'item',
+				'#title' => t('Instructions'),
+				'#description' => t($instructions)
+				);
+  $form['shift_id'] = array(
+			    '#type' =>'hidden',
+			      '#value' => $shift_id
+			    );
+  
+  $form['volunteer'] = array(
+			     '#type' => 'select',
+			     '#title' => t('Volunteer'),
+			     '#default_value' => $default_uid,
+			     '#options' => $options,
+			     '#description' => t('The volunteer on this shift.')
+			     );
+  $form['split_time'] = array(
+			      '#type' => 'textfield',
+			      '#title' => t('Split Time'),
+			      '#size' => 10,
+			      '#maxlength' =>4
+			      );
+  $form['secondary_volunteer'] = array(
+				       '#type' => 'select',
+				       '#title' => t('Secondary Volunteer'),
+				       '#default_value' => 0,
+				       '#options' => $options, 
+				       '#description' => t("The volunteer to take the second part of the shift.  Leave this blank unless you're splitting the shift.")
+				       );
+  $form['submit'] = array('#type' => 'submit', 
+			  '#value' => t('Change shift')
+			  );
+  $form['#submit'][]= 'shift_scheduler_change_shift_form_submit';
+  $form['#validate'][] = 'shift_scheduler_change_shift_form_validate';
+  return $form;
+}
+
+function shift_scheduler_change_shift_form_validate($form, &$form_state){
+  $fi = $form_state['values'];
+  if( strlen($fi['split_time']) != 4 && strlen($fi['split_time']) != 0 ){
+    form_set_error('split_time',t('The split time must be a valid military time.'));
+  }
+  
+  $shift_id =  (int) $fi['shift_id'];
+  $shift_query_result = db_query("SELECT * FROM {shift_scheduler_shifts} WHERE shift_id = '%d' ", $shift_id);
+  $shift_info = db_fetch_object($shift_query_result);
+  $start_time = strtotime($shift_info->start_time);
+  $end_time = strtotime($shift_info->end_time);
+  //split is true iff a valid split has been entered
+  $split_time = 0;
+  $split = ( strlen($fi['split_time']) == 4);//preliminary check that a time and secondary volunteer have been entered
+  if($split){//convert the military time entry into a full timestamp
+    $st = $fi['split_time'];//st = split time
+    $hour = (int)($st[0] . $st[1]);
+    $minute = (int)($st[2] . $st[3]);
+    //Since the split time doesn't specify a date, we have to
+    //infer the date of the split time based on where it occurs relative to the start time
+    $temp_split_time = mktime($hour, $minute);
+    if($temp_split_time < mktime((int)date('G', $end_time), (int)date('i', $end_time))){
+      //if it's before the start time, then both the split and the end times must occur on the next day
+      $split_time = mktime($hour, $minute, 0, date('n', $end_time), date('j', $end_time), date('Y', $end_time));
+    }
+    else{//split occurs on the same day as the start time
+      $split_time = mktime($hour, $minute, 0, date('n', $start_time), date('j', $start_time), date('Y', $start_time));
+    }
+    $form_state['values']['split_time_int'] = $split_time;
+  }
+  if($split && !($start_time < $split_time  && $split_time < $end_time)){//check for an invalid split time
+    form_set_error('split_time',t('The split time specified falls outside of the valid range.'));
+  }
+  
+}
+
+/*
+Process the change shift form after it is submitted
+This should not be called directly.  Instead, it is called by
+the drupal core because we specify:
+$form['#submit'][]= 'shift_scheduler_change_shift_form_submit'
+In shift_scheduler_change_shift_form
+
+@param form Provided by the drupal core
+@para form_state Provided by the drupal core.
+*/
+function shift_scheduler_change_shift_form_submit($form, &$form_state){
+  $fi = $form_state['values'];/* fi = "form_info */
+  
+  //Get information about the shift that we're editing
+  $shift_id =  (int) $fi['shift_id'];
+  $shift_query_result = db_query("SELECT * FROM {shift_scheduler_shifts} WHERE shift_id = '%d' ", $shift_id);
+  $shift_info = db_fetch_object($shift_query_result);
+  $start_time = strtotime($shift_info->start_time);
+  $end_time = strtotime($shift_info->end_time);
+
+  //split is true iff a valid split has been entered
+  $split_time = 0;
+  $split = ( strlen($fi['split_time']) == 4);//preliminary check that a time and secondary volunteer have been entered
+  if($split){//convert the military time entry into a full timestamp
+    $split_time = $form_state['values']['split_time_int'];
+  }
+
+
+  if(!($split)){  //simple case: no split
+    //update the shift
+    db_query("UPDATE {shift_scheduler_shifts} SET uid='%d' WHERE shift_id = '%d'", $fi['volunteer'], $shift_info->shift_id  );
+    /*Find the next chronological shift in this slot and redirect to changing it*/
+    $next_shift_info = db_fetch_object(db_query("SELECT shift_id FROM {shift_scheduler_shifts} WHERE slot_id=%d AND start_time='%s'",$shift_info->slot_id, $shift_info->end_time));
+    if($next_shift_info){//if there is a next shift, redirect to changing it
+      $form_state['redirect'] = array('shift_scheduler/change_shift', 'shift='.($next_shift_info->shift_id) );
+    }
+    else{//no more shifts in this slot
+      $form_state['redirect'] = array('shift_scheduler');
+    }
+  }
+  elseif($split){//handle split
+    db_query("UPDATE {shift_scheduler_shifts} SET uid=%d, end_time='%s' WHERE shift_id='%d'", $fi['volunteer'], date( 'Y-m-d H:i:s', $split_time), $shift_info->shift_id);
+    $new_record = array(
+			'uid' => $fi['secondary_volunteer'],
+			'start_time' => date( 'Y-m-d H:i:s', $split_time),
+			'end_time' => date( 'Y-m-d H:i:s', $end_time),
+			'slot_id' => $shift_info->slot_id
+			);
+    drupal_write_record('shift_scheduler_shifts', $new_record);
+    $form_state['redirect'] = array('shift_scheduler');
+  }
+   
+}
+
+/**
+ * Define the appearance of the change shift page.
+ * Determines which shift should be edited from the
+ * URL by $_GET['shift'].
+ */
+function shift_scheduler_change_shift() {
+  //get the time and date of the shift
+  $shift_info = db_fetch_object(db_query('SELECT start_time, end_time FROM {shift_scheduler_shifts} WHERE shift_id=%d', $_GET['shift']));
+  
+  $start_time = strtotime($shift_info->start_time);
+  $end_time   = strtotime($shift_info->end_time);
+  
+  drupal_set_title(t('Changing shift %st - %et on %sd',
+                     array(
+                       '%st' => date('Hi',$start_time), 
+                       '%et' => date('Hi', $end_time), 
+                       '%sd' => date('M j', $start_time),
+			   )
+		   )
+  );
+  // if the shift didn't happen in the past
+  if ($start_time >= time() - (60 * 60 * 4)) {
+    $page_content = drupal_get_form('shift_scheduler_change_shift_form');
+  }
+  else {
+    $page_content = t("This shift occured in the past. Please contact the webmaster to edit historical shifts.");
+  }
+  return $page_content; 
+}
+
+/**
+ * Form builder for the old shifts form.
+ * 
+ * @see shift_scheduler_old_shifts_form_submit()
+ * 
+ * @ingroup forms
+ */
+function shift_scheduler_old_shifts_form(&$form_state) {
+  global $user;
+  // Get a list of all the volunteers
+  $volunteer_options = array();
+  $volunteer_options[0] = ' ';
+  $volunteer_options_query = "SELECT uid, name FROM {users} WHERE uid > 1 ORDER BY name";
+  $volunteer_options_result = db_query($volunteer_options_query);
+  while ($volunteer_options_row = db_fetch_object($volunteer_options_result)) {
+    $volunteer_options[$volunteer_options_row->uid] = $volunteer_options_row->name;
+  }
+  // Get a list of slots and save as options
+  $slot_options = array();
+  $slot_options[-1] = t('All');
+  $slot_options_query = "SELECT slot_id, display_name FROM {shift_scheduler_slots} WHERE status=%d";
+  $slot_options_result = db_query($slot_options_query);
+  while ($slot_options_row = db_fetch_object($slot_options_result)) {
+    $slot_options[$slot_options_row->slot_id] = $slot_options_row->display_name;
+  }
+  $form = array();
+  $form['volunteer'] = array(
+    '#type' => 'select',
+    '#title' => t('Volunteer'),
+    '#description' => t('The volunteer whose shifts you would like to review.'),
+    '#options' => $volunteer_options,
+    '#default_value' => $user->uid,
+    '#required' => TRUE,
+    // $user is a global variable that refers to the currently logged in user
+  );
+  $form['slot'] = array(
+    '#type' => 'select',
+    '#title' => t('Slot'),
+    '#description' => t('Show only shifts taken in this slot. Select "All" to get all shifts.'),
+    '#options' => $slot_options,
+    '#default_value' => -1,
+    '#required' => TRUE,
+  );
+  $form['start_date'] = array(
+    '#type' => 'date',
+    '#title' => t('Start date'),
+    '#description' => t('Default value is today'),
+    '#required'=> TRUE,
+  );
+  $form['end_date'] = array(
+    '#type'=>'date',
+    '#title' => t('End date'),
+    '#required' => TRUE,
+    '#description'=> t('Default value is a year from today.'),
+    '#default_value'=> array(
+      'year' => date('Y') + 1,
+      'month' => date('m'),
+      'day' => date('j'),
+    ),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+  $form['#submit'][] = 'shift_scheduler_old_shifts_form_submit';
+  return $form;
+}
+
+/**
+ * Form submission handler for shift_scheduler_old_shifts_form().
+ * 
+ * @see shift_scheduler_old_shifts_form()
+ */
+function shift_scheduler_old_shifts_form_submit($form, &$form_state) {
+  $fi = $form_state['values'];
+  
+  $start_time = mktime(0, 0, 0, $fi['start_date']['month'], $fi['start_date']['day'], $fi['start_date']['year']);
+  $end_time   = mktime(0, 0, 0, $fi['end_date']['month'], $fi['end_date']['day'], $fi['end_date']['year']);
+  
+  $form_state['redirect'] = array(
+    'shift_scheduler/old_shifts_results',
+    'uid=' . $fi['volunteer'] .
+    '&start_time=' . $start_time .
+    '&end_time=' . $end_time .
+    '&slot_id=' . $form_state['values']['slot'],
+  );
+}
+
+/**
+ * Define the appearance of the old shifts page.
+ * Not called by any functions.
+ * 
+ * @ingroup unused
+ * 
+ * @todo Remove this function?
+ */
+function shift_scheduler_old_shifts() {
+  return drupal_get_form('shift_scheduler_old_shifts_form');
+}
+
+/**
+ * Define the appearance of the results page for the shift schedule.
+ * 
+ * @todo What does this function do?
+ *   Clean up the SQL statements, they are awfully confusing.
+ */
+function shift_scheduler_old_shifts_results() {
+  $page_content = '';
+  //get the parameters from the URL
+  $uid        = $_GET['uid'];
+  $start_time = $_GET['start_time'];
+  $end_time   = $_GET['end_time'];
+  //query the datebase
+  if ($_GET['slot_id'] == -1) {
+    $result = db_query("SELECT {shift_scheduler_shifts}.slot_id, start_time, end_time, display_name \n " .
+                       "FROM {shift_scheduler_shifts} INNER JOIN {shift_scheduler_slots} ON {shift_scheduler_slots}.slot_id={shift_scheduler_shifts}.slot_id \n " .
+                       "WHERE uid=%d AND (start_time>'%s' AND end_time<'%s') \n " .
+                       "ORDER BY start_time \n "
+                       ,
+                       $uid,
+                       date('Y-m-d H:i:s', $start_time), 
+                       date('Y-m-d H:i:s', $end_time)
+                      );
+  }
+  else {
+    $result = db_query("SELECT {shift_scheduler_shifts}.slot_id, start_time, end_time, display_name \n " .
+                       "FROM {shift_scheduler_shifts} INNER JOIN {shift_scheduler_slots} ON {shift_scheduler_slots}.slot_id={shift_scheduler_shifts}.slot_id \n " .
+                       "WHERE uid=%d AND (start_time>'%s' AND end_time<'%s')  AND {shift_scheduler_shifts}.slot_id=%d\n " .
+                       "ORDER BY start_time \n "
+                       , 
+                       $uid,
+                       date( 'Y-m-d H:i:s', $start_time), 
+                       date( 'Y-m-d H:i:s', $end_time),
+                       $_GET['slot_id']
+                      );
+  }
+  
+  // count the total amount of duty taken
+  $total_duty = 0;
+  
+  // write the results of the database query out into a table
+  
+  // set up the table headers
+  // open the table html tag and add table headers
+  $page_content .= '<table class="body-table"> 
+    <tbody>
+      <tr>
+        <th>' .t(' Date').' </th>
+        <th>'.t(' Shifts').' </th>
+      </tr> ';
+  $midnight = 0;
+  $has_content = FALSE;
+  while ($row = db_fetch_object($result)) {
+    $has_content = TRUE;
+    $stt = strtotime($row->start_time);
+    $ett = strtotime($row->end_time);
+    $total_duty += $ett - $stt;
+    // if we've entered a new day,
+    // then add a date label and update the $midnight marker
+    if ($midnight < $stt) {
+      // if this isn't the first row, close the last row
+      if($midnight != 0) {
+        $page_content .= '</td></tr>';
+      }
+      $page_content .= ' <tr> <td class="table-label">' . date('n/j/Y', $stt) . '</td> <td>';
+      // midnight on the day after the start time
+      $midnight = mktime(0, 0, 0, date('n',$stt), date('j',$stt) + 1, date('Y',$stt));
+    }
+    // write shift time in form e.g. 0900 -1300 Slot Name
+    $page_content .= '<p>' . date('Hi', $stt) . ' - ' . date('Hi',$ett) . ' ' . $row->display_name . '</p>'; // Does these really need to be contained within a paragraph tags? It would be more efficient to define a class for the TR and then style it in the CSS.
+  }
+  $page_content .= '</tbody></table>';
+  if (!$has_content) {
+    $page_content .= t("No shifts to display"); 
+  }  
+  $page_content .= '<p><strong>'.t('Total duty taken:').'</strong>' . 
+    floor($total_duty / 3600) . t(' hours ') .
+    floor(($total_duty % 3600) / 60) . t(' minutes').'</p>';
+  return $page_content;
+}
+
+/**** ADMINISTRATIVE FEATURES
+
+Everything beyond this point defines administrative features for
+customizing the shift schedule to a particular organization.  For example,
+these functions will define the pages that allow you to create new slots,
+create default times for each of the slots, rename slots, delete slots,
+deactivate slots, etc.
+
+*******/
+
+/**
+ * 
+ * @todo Explain what this function does.
+ * 
+ * @ingroup admin
+ */
+function shift_scheduler_admin_slots() {
+  if (!arg(4)) {
+    $header = array(
+      t('Name'),
+      array(
+        'data' => t('Operations'),
+        'colspan' => 2,
+      ),
+    );
+    $result = db_query("SELECT slot_id, display_name FROM {shift_scheduler_slots} ORDER BY display_name"); 
+    while ($row = db_fetch_object($result)) {
+      $edit_default_shifts = l(t('edit default shifts'), 'admin/settings/shift_scheduler/default_shifts/'. $row->slot_id);
+      $rows[] = array(
+        $row->display_name,
+        l(t('edit slot'), 'admin/settings/shift_scheduler/slot/'. $row->slot_id),
+        $edit_default_shifts,
+      );
+    }
+  }
+  $form = drupal_get_form('shift_scheduler_admin_slot_form');
+  //$form = shift_scheduler_admin_slot_form();
+  //$rows[] = array(drupal_render($form['name']), array('data' => drupal_render($form['submit']), 'colspan' => 2));
+  
+  $output .= theme('table', $header, $rows);
+  $output .= $form;
+  return $output;
+}
+
+/**
+ * Form builder for changing slot roles.
+ * 
+ * @see shift_scheduler_admin_slot_validate()
+ * @see shift_scheduler_admin_slot_submit()
+ * 
+ * @todo Explain what this function does.
+ * 
+ * @ingroup forms
+ * @ingroup admin
+ */
+function shift_scheduler_admin_slot_form() {
+  // Takes the 5th argument on the drupal path.
+  // e.g. takes 4 from admin/settings/shift_scheduler/slot/4
+  $slot_id = arg(4);
+  if ($slot_id) {
+    $row = db_fetch_object(db_query("SELECT * FROM {shift_scheduler_slots} WHERE slot_id=%d", $slot_id));
+    // display the edit slot form
+    $form['name'] = array(
+      '#title' => t('Slot name'),
+      '#type' => 'textfield',
+      '#size' => 32,
+      '#maxlength' => 64,
+      '#default_value'=> $row->display_name,
+    );
+    $form['status'] = array(
+      '#type' => 'radios',
+      '#title' => t('Status'),
+      '#default_value' => $row->status,
+      '#options' => array(
+        t('Active'),
+        t('Deactivated'),
+      ),
+    );
+    $instructions = t('In order for a user to take a shift in a particular slot, the user must be assinged a role that is eligible for that slot. The roles  used are the same roles that drupal uses to assign permissions.  Use this form to define which roles are eligible to take which slots. Add a role using the New Eligible Role menu. To remove a role, simply change to to a blank.');
+    $form['instructions'] = array(
+      '#type' => 'item',
+      '#title' => t('Eligibility instructions'),
+      '#description' => t($instructions),
+    );
+    // Get a list of all rows and put them in an array indexed by their rid
+    $role_array = array();
+    $role_result = db_query("SELECT rid, name FROM {role} ORDER BY rid");
+    while ($role_row = db_fetch_object($role_result)) {
+      $role_array[$role_row->rid] = $role_row->name;
+    }
+    // anonymous users can't be assigned shifts
+    $role_array[1] = '';
+    // generate a form item for each role already eligible for this slot
+    $i = 1;
+    $result = db_query("SELECT {role}.rid, {role}.name FROM {shift_scheduler_slot_roles} INNER JOIN {role} ON {shift_scheduler_slot_roles}.rid = {role}.rid WHERE {shift_scheduler_slot_roles}.slot_id = %d ORDER BY {role}.name", $slot_id);
+    while ($row = db_fetch_object($result)) {
+      $form[$i-1] = array(
+        '#type' => 'select',
+        '#title' => t('Role ' . $i),
+        '#options' => $role_array,
+        '#default_value' => $row->rid,
+      );
+      $i = $i + 1;
+    }
+    // an extra row to add another eligible role
+    $form[$i-1] = array(
+      '#type' => 'select',
+      '#title' => t('New Eligible Role'),
+      '#description' => t('To add a new eligible role, select one from this menu.'),
+      '#options' => $role_array,
+    );
+    $form['num_eligible'] = array(
+      '#type' => 'value',
+      '#value' => $i - 1,
+    );
+    $form['slot_id'] = array(
+      '#type' => 'value',
+      '#value' => $slot_id,
+    );
+    $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Save slot'),
+    );
+    $form['delete'] = array(
+      '#type' => 'submit',
+      '#value' => t('Delete slot'),
+    );
+  }
+  // If you aren't editing a particular slot, assume we're creating a new one
+  else {
+    $form['name'] = array(
+      '#type' => 'textfield',
+      '#size' => 32,
+      '#maxlength' => 64,
+    );
+    $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Add slot'),
+    );
+  }
+  
+  $form['#submit'][] = 'shift_scheduler_admin_slot_submit';
+  $form['#validate'][] = 'shift_scheduler_admin_slot_validate';
+  return $form;
+}
+
+/**
+ * Form validation handler for shift_scheduler_admin_slot_form()
+ * 
+ * @see shift_scheduler_admin_slot_form()
+ * @see shift_scheduler_admin_slot_submit()
+ * 
+ * @todo Explain what this function does.
+ * 
+ * @ingroup admin
+ */
+function shift_scheduler_admin_slot_validate($form, &$form_state) {
+  if ($form_state['values']['name']) {
+    // Edit slot
+    if ($form_state['values']['op'] == t('Save slot')) {
+      // check for duplicate names
+      if (db_result(db_query("SELECT COUNT(*) FROM {shift_scheduler_slots} WHERE display_name = '%s' AND slot_id != %d", $form_state['values']['name'], $form_state['values']['slot_id']))) {
+        form_set_error('name', t('The slot name %name already exists. Please choose another slot name.', array('%name' => $form_state['values']['name'])));
+      }
+      // check for duplicate eligible roles
+      $seen_array = array();
+      for ($i = 0; $i <= $form_state['values']['num_eligible']; $i++) {
+        $rid = $form_state['values'][$i - 1];
+        // if the rid has already been seen and isn't the empty role
+        if ($seen_array[$rid] && $rid != 1) {
+          form_set_error($i - 1, t('Roles may not appear more than once.'));
+        }
+        $seen_array[$rid] = TRUE;
+      }
+    }
+    // Add slot
+    if ($form_state['values']['op'] == t('Add slot')) {
+      // check that there isn't already a slot with that name
+      if (db_result(db_query("SELECT COUNT(*) FROM {shift_scheduler_slots} WHERE display_name = '%s'", $form_state['values']['name']))) {
+        form_set_error('name', t('The slot name %name already exists. Please choose another slot name.', array('%name' => $form_state['values']['name'])));
+      }
+    }
+  }
+  else {
+    form_set_error('name', t('You must specify a valid slot name.'));
+  }
+}
+
+/**
+ * Form submission handler for shift_scheduler_admin_slot_form()
+ * 
+ * @see shift_scheduler_admin_slot_form()
+ * @see shift_scheduler_admin_slot_validate()
+ * 
+ * @todo Explain what this function does.
+ * 
+ * @ingroup admin
+ */
+function shift_scheduler_admin_slot_submit($form, &$form_state) {
+  if ($form_state['values']['op'] == t('Save slot')) {
+    db_query("UPDATE {shift_scheduler_slots} SET display_name = '%s' WHERE slot_id = %d", $form_state['values']['name'], $form_state['values']['slot_id']);
+    db_query("UPDATE {shift_scheduler_slots} SET status = %d WHERE slot_id = %d", $form_state['values']['status'], $form_state['values']['slot_id']);
+    db_query("DELETE FROM {shift_scheduler_slot_roles} WHERE slot_id = %d", $form_state['values']['slot_id']);
+    
+    // update eligible roles
+    for ($i = 0; $i < $form_state['values']['num_eligible'] + 1; $i++) {
+      if ($form_state['values'][$i] != 1) {
+        db_query("INSERT INTO {shift_scheduler_slot_roles} (slot_id, rid) VALUES (%d, %d)", $form_state['values']['slot_id'],$form_state['values'][$i]);
+      }
+    }
+    drupal_set_message(t('The slot has been updated.'));
+  }
+  elseif ($form_state['values']['op'] == t('Delete slot')) {
+    db_query('DELETE FROM {shift_scheduler_slots} WHERE slot_id = %d', $form_state['values']['slot_id']);
+    db_query('DELETE FROM {shift_scheduler_shifts} WHERE slot_id = %d', $form_state['values']['slot_id']);
+    db_query('DELETE FROM {shift_scheduler_slot_times} WHERE slot_id = %d', $form_state['values']['slot_id']);
+    
+    $form_state['redirect'] = array('admin/settings/shift_scheduler/slot');
+    drupal_set_message(t('The slot and all of its associated shifts have been deleted.'));
+  }
+  elseif ($form_state['values']['op'] == t('Add slot')) {
+    db_query("INSERT INTO {shift_scheduler_slots} (display_name, status) VALUES ('%s', 0)", $form_state['values']['name']);
+    $slot_info = db_fetch_object(db_query("SELECT slot_id FROM {shift_scheduler_slots} WHERE display_name ='%s'", $form_state['values']['name']));
+    
+    // by default allow any authenticated user to be placed in a slot
+    db_query("INSERT INTO {shift_scheduler_slot_roles} (slot_id, rid) VALUES (%d, 2)", $slot_info->slot_id);
+    drupal_set_message(t('The slot has been added.'));
+  }
+}
+
+/**
+ * 
+ * @todo Explain what this function does.
+ * 
+ * @ingroup admin
+ */
+function shift_scheduler_admin_default_shifts() {
+  return drupal_get_form('shift_scheduler_admin_default_shifts_form');
+}
+
+/**
+ * Form builder for admin default shifts.
+ * 
+ * @see shift_scheduler_admin_default_shifts_validate()
+ * @see shift_scheduler_admin_default_shifts_submit()
+ * 
+ * @todo Explain what this function does.
+ *   Explain indices in start_time[].
+ *   Optimize the loops.
+ * 
+ * @ingroup forms
+ * @ingroup admin
+ */
+function shift_scheduler_admin_default_shifts_form(&$form_state) {
+  $slot_id = arg(4);
+  $result = db_query("SELECT slot_time_id, start_time, end_time, monday, tuesday, wednesday, thursday, friday, saturday, sunday FROM {shift_scheduler_slot_times} WHERE slot_id=%d", $slot_id);
+  $form = array();
+  $instructions = t('Times should be in military format (e.g. 0800, 1234). To add a shift, fill in both the start time and the end time under New Shift.  If the end time is before the start time, then the end time is taken to be on the following day.  To delete a shift, delete both the start time and end time of that shift.');
+  $form['instructions'] = array(
+    '#type' => 'item',
+    '#title' => t('Instructions'),
+    '#description' => t($instructions),
+  );
+  $last_row = NULL;
+  
+  $i = 1;
+  while ($row = db_fetch_object($result)) {
+    $form[$i-1] = array(
+      '#type' => 'item',
+      '#title' => t('Default Shift ' . $i),
+      '#tree' => TRUE,
+    );
+    $weekday_default = array();
+    // create a helper on every iteration of the while loop?
+    $weekday_default_helper = array(
+      1 => (int) $row->monday,
+      2 => (int) $row->tuesday,
+      3 => (int) $row->wednesday,
+      4 => (int) $row->thursday,
+      5 => (int) $row->friday,
+      6 => (int) $row->saturday,
+      7 => (int) $row->sunday,
+    );
+    for ($j =1; $j < 8; $j++) {
+      if($weekday_default_helper[$j] == 1) {
+        $weekday_default[] = $j;
+      }
+    }
+    $form[$i-1]['weekday'] = array(
+      '#type' => 'checkboxes',
+      '#title' => t('days of week'),
+      '#description' => t('The days of the week for the shift.'),
+      '#options' => array(
+        1 => t('Monday'),
+        2 => t('Tuesday'),
+        3 => t('Wednesday'),
+        4 => t('Thursday'),
+        5 => t('Friday'),
+        6 => t('Saturday'),
+        7 => t('Sunday'),
+      ),
+      '#default_value' => $weekday_default,
+      '#multicolumn' => array(
+        'width' => 7,
+      ),
+    );
+    $form[$i-1]['slot_time_id'] = array(
+      // use 'value' rather than 'hidden'
+      '#type' => 'value',
+      '#value' => $row->slot_time_id,
+    );
+    $form[$i-1]['start_time'] = array(
+      '#type' => 'textfield',
+      '#title' => t('start time'),
+      '#size' => 10,
+      '#maxlength' => 4,
+      '#default_value' => ($row->start_time[11] . $row->start_time[12] . $row->start_time[14] . $row->start_time[15]),
+    );
+    $form[$i-1]['end_time'] = array(
+      '#type' => 'textfield',
+      '#title' => t('end time'),
+      '#size' => 10,
+      '#maxlength' => 4,
+      '#default_value' => ($row->end_time[11] . $row->end_time[12] . $row->end_time[14] . $row->end_time[15]),
+    );
+    $i = $i + 1;
+    $last_row = $row;
+  }
+  $form['slot_id'] = array(
+    // use 'value' rather than 'hidden'
+    '#type' => 'value',
+    '#value' => $slot_id,
+  );
+  // pass the number of slots that already exist to the form-processing functions
+  $form['num_defined'] = array(
+    // use 'value' rather than 'hidden'
+    '#type' => 'value',
+    '#value' => $i - 1,
+  );
+  $form['new_time'] = array(
+    '#name' => 'new_time',
+    '#type' => 'item',
+    '#title' => t('New Time'),
+    '#description' => t('Fill in times here to create a new default time.'),
+    '#tree' => TRUE,
+  );
+  
+  $weekday_default = array();
+  for ($j = 1; $j < 8; $j++) {
+    if ($weekday_default_helper[$j]) {
+      $weekday_default[] = $j;
+    }
+  }
+  $form['new_time']['weekday'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('days of week'),
+    '#description' => t('The days of the week for the shift'),
+    '#options' => array(
+      1 => t('Monday'),
+      2 => t('Tuesday'),
+      3 => t('Wednesday'),
+      4 => t('Thursday'),
+      5 => t('Friday'),
+      6 => t('Saturday'),
+      7 => t('Sunday'),
+    ),
+    '#default_value' => $weekday_default,
+    '#multicolumn' => array(
+      'width'=>7,
+    ),
+  );      
+  $form['new_time']['start_time'] = array(
+    '#type' => 'textfield',
+    '#title' => t('start time'),
+    '#size' => 10,
+    '#maxlength' => 4,
+  );
+  $form['new_time']['end_time'] = array(
+    '#type' => 'textfield',
+    '#title' => t('end time'),
+    '#size' => 10,
+    '#maxlength' => 4,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Update'),
+  );
+  $form['#submit'][] = 'shift_scheduler_admin_default_shifts_submit';
+  $form['#validate'][] = 'shift_scheduler_admin_default_shifts_validate';
+  return $form;
+}
+
+/**
+ * Form validation handler for shift_scheduler_admin_default_shifts_form().
+ * 
+ * @see shift_scheduler_admin_default_shifts_form()
+ * @see shift_scheduler_admin_default_shifts_submit()
+ * 
+ * @todo Explain what this function does.
+ * 
+ * @ingroup admin
+ */
+function shift_scheduler_admin_default_shifts_validate($form, &$form_state) {
+  for ($i = 0; $i < (int) $form_state['values']['num_defined']; $i++) {
+    $st = $form_state['values'][$i]['start_time'];
+    $et = $form_state['values'][$i]['end_time'];
+    
+    if(!((strlen($st) == strlen($et)) && (strlen($st) == 4 || strlen($st) == 0))) {
+      form_set_error($i, t('Both the start time and the end time must either be blank or full 4-number military times (e.g. 0900 or 1354)')); 
+    }
+  }
+  // Check that either:
+  // neither or both of the times for a new slot are filled in
+  if (strlen($form_state['values']['new_time']['start_time']) == 4 
+      ^ strlen($form_state['values']['new_time']['end_time']) == 4) {
+    form_set_error('new_time', t('To add a new default shift, you must enter values for both its start and end times'));
+  }
+
+  //check that the new default shift does not overlap with any of the old ones
+  if(strlen($form_state['values']['new_time']['start_time']) == 4 && 
+     strlen($form_state['values']['new_time']['end_time']) == 4){
+    $nss = $form_state['values']['new_time']['start_time']; //new start string
+    $nes =$form_state['values']['new_time']['end_time']; //new end string
+    $nst = mktime((int) ($nss[0] . $nss[1]), (int)($nss[2] . $nss[3])); //new start time
+    $net = mktime((int) ($nes[0] . $nes[1]), (int)($nes[2] . $nes[3])); //new end time
+    for($i=0; $i<(int)$form_state['values']['num_defined']; $i++){
+      $overlapping_days = FALSE;
+      foreach($form_state['values'][$i]['weekday'] as $day_num){
+	foreach($form_state['values']['new_time']['weekday'] as $new_day_num){
+	  if($day_num == $new_day_num && $day_num !=0){
+	    $overlapping_days=TRUE;
+	    break;
+	  }
+	}
+	if($overlapping_days){
+	  break;
+	}
+      }
+      $oss = $form_state['values'][$i]['start_time']; //old start string
+      $oes = $form_state['values'][$i]['end_time']; //old end string
+      $ost = mktime((int) ($oss[0] . $oss[1]), (int)($oss[2] . $oss[3])); //old start time
+      $oet = mktime((int) ($oes[0] . $oes[1]), (int)($oes[2] . $oes[3])); //new end time
+      if((( $nst<$oet  && $nst>$ost ) || ($net<$oet && $net>$ost)) && $overlapping_days ){
+	form_set_error($i, t('The new default shift cannot overlap with any of the old default shifts.'));
+      }
+    }
+  }
+
+}
+
+/**
+ * Form submission handler for shift_scheduler_admin_default_shifts_form().
+ * 
+ * @see shift_scheduler_admin_default_shifts_form()
+ * @see shift_scheduler_admin_default_shifts_validate()
+ * 
+ * @todo Explain what this function does.
+ *   Explain $weekday stuff.
+ * 
+ * @ingroup admin
+ */
+function shift_scheduler_admin_default_shifts_submit($form, &$form_state) {
+  $slot_id = (int) $form_state['values']['slot_id'];
+  // update previously defined times
+  for ($i = 0; $i < (int) $form_state['values']['num_defined']; $i++) {
+    $slot_time_id = (int) ($form_state['values'][$i]['slot_time_id']);
+    $ss = $form_state['values'][$i]['start_time'];
+    $es = $form_state['values'][$i]['end_time'];
+    // If both the begin and end time are blanked, delete the default shift
+    if (strlen($ss) == 0 && strlen($es) == 0) {
+      db_query('DELETE FROM {shift_scheduler_slot_times} WHERE slot_time_id=%d', $slot_time_id);
+      drupal_set_message(t('Default shift was deleted'));
+    }
+    $start_time = mktime((int) ($ss[0] . $ss[1]), (int) ($ss[2] . $ss[3]));
+    $end_time = mktime((int) ($es[0] . $es[1]), (int) ($es[2] . $es[3]));
+    $weekday = $form_state['values'][$i]['weekday'];
+    for ($j = 1; $j < 8; $j++) {
+      if ($weekday[$j] == $j) {
+        $weekday[$j] = 1;
+      }
+      else {
+        $weekday[$j] = 0;
+      }
+    }
+    db_query("UPDATE {shift_scheduler_slot_times} SET start_time='%s', end_time='%s', monday=%d, tuesday=%d, wednesday=%d, thursday=%d, friday=%d, saturday=%d, sunday=%d WHERE slot_time_id = %d", 
+             date("Y-m-d H:i:00", $start_time), 
+             date("Y-m-d H:i:00", $end_time),
+             $weekday[1],
+             $weekday[2],
+             $weekday[3],
+             $weekday[4],
+             $weekday[5],
+             $weekday[6],
+             $weekday[7],
+             $slot_time_id
+            );
+  }
+  // Add new default shift
+  // check that both begin and end time of new shift are filled in
+  if (strlen($form_state['values']['new_time']['start_time']) == 4
+      && strlen($form_state['values']['new_time']['end_time']) == 4) {
+    // get the strings for the start and end times from the form
+    // ss = start string
+    $ss = $form_state['values']['new_time']['start_time'];
+    $es = $form_state['values']['new_time']['end_time'];
+    // what is the purpose of this loop?
+    $weekday = $form_state['values']['new_time']['weekday'];
+    for($j=1; $j<8; $j++){
+      if($weekday[$j]==$j){
+	$weekday[$j]=1;
+      }else{
+	$weekday[$j]=0;
+      }
+    }
+    // convert strings to seconds after the unix epoch
+    // the day is arbitrarily chosen to be the first day of the unix epoch
+    $start_time = mktime((int) ($ss[0] . $ss[1]), (int) ($ss[2] . $ss[3]));
+    $end_time = mktime((int) ($es[0] . $es[1]), (int) ($es[2] . $es[3]));
+    $new_record = array(
+      'start_time' => date("Y-m-d H:i:00", $start_time),
+      'end_time' => date("Y-m-d H:i:00", $end_time),
+      'slot_id' => $slot_id,
+      'monday' => $weekday[1],
+      'tuesday' => $weekday[2],
+      'wednesday' => $weekday[3],
+      'thursday' => $weekday[4],
+      'friday' => $weekday[5],
+      'saturday' => $weekday[6],
+      'sunday' => $weekday[7],
+    );
+    drupal_write_record('shift_scheduler_slot_times', $new_record);
+    drupal_set_message(t('New default shift added'));
+  }
+}
+
+/**
+ * 
+ * @todo Explain what this function does.
+ * 
+ * @ingroup admin
+ */
+function shift_scheduler_configure() {
+  return drupal_get_form('shift_scheduler_configure_form');
+}
+
+/**
+ * Form builder for configuration.
+ * 
+ * @see shift_scheduler_configure_submit()
+ * 
+ * @todo Explain what this function does.
+ * 
+ * @ingroup forms
+ * @ingroup admin
+ */
+function shift_scheduler_configure_form(&$form_state) {
+  $form = array();
+  $form['claim_open_shifts'] = array(
+    '#name'=> 'claim_open_shifts',
+    '#type' => 'radios',
+    '#title' => t('Claim Open Shifts'),
+    '#description' => t('If enabled, any authenticated user with access to the shift schedule can claim any open shift on the schedule.'),
+    '#default_value' => variable_get('shift_scheduler_claim_open_shifts', 0),
+    '#options' => array(
+      t('Disabled'),
+      t('Enabled'),
+    ),
+  );
+  $form['relinquish_shifts'] = array(
+    '#name'=> 'relinquish_shifts',
+    '#type' => 'radios',
+    '#title' => t('Relinquish Shifts'),
+    '#description' => t('If enabled, any authenticated user with access to the shift schedule can claim relinquish a shift assigned to him/her, making it an open shift.'),
+    '#default_value' => variable_get('shift_scheduler_relinquish_shifts', 0),
+    '#options' => array(
+      t('Disabled'),
+      t('Enabled'),
+    ),
+  );
+  /*
+  $form['link_to_profile'] = array(
+    '#name'=> 'link_to_profile',
+    '#type' => 'radios',
+    '#title' => t('Link User Names To Profiles'),
+    '#description' => t('If enabled, the user names displayed on the shift schedule will link to user profiles instead of the same destination as the shift time'),
+    '#default_value' => variable_get('shift_scheduler_link_to_profile', 0),
+    '#options' => array(
+      t('Disabled'),
+      t('Enabled'),
+    ),
+  );
+  */
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Update'),
+  );
+  $form['#submit'][] = 'shift_scheduler_configure_submit';
+  return $form;
+}
+
+/**
+ * Form submission handler for shift_scheduler_configure_form().
+ * 
+ * @see shift_scheduler_configure_form()
+ * 
+ * @todo Explain what this function does.
+ * 
+ * @ingroup admin
+ */
+function shift_scheduler_configure_submit($form, &$form_state) {
+  variable_set('shift_scheduler_claim_open_shifts', (int)$form_state['values']['claim_open_shifts']);
+  variable_set('shift_scheduler_relinquish_shifts', (int)$form_state['values']['relinquish_shifts']);
+  variable_set('shift_scheduler_link_to_profile', (int)$form_state['values']['link_to_profile']);
+}
+
+/**
+ * Implementaiton of hook_menu().
+ * 
+ * @todo Find a way to get something as a normal menu item.
+ */
+function shift_scheduler_menu() {
+  $items = array();
+  $items['shift_scheduler'] = array(
+    'title' => t('Shift Schedule'),
+    'page callback' => 'shift_scheduler_schedule',
+    'access arguments' => array('access shift schedule'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['shift_scheduler/add_days'] = array(
+    'title' => t('Add days'),
+    'page callback' => 'shift_scheduler_add_days',
+    'access arguments' => array('add to shift schedule'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['shift_scheduler/change_shift'] = array(
+    'title' => t('Change shift'),
+    'page callback' => 'shift_scheduler_change_shift',
+    'access arguments' => array('edit shift schedule'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['shift_scheduler/old_shifts'] = array(
+    'title' => t('Old shifts'),
+    'page callback' => 'shift_scheduler_old_shifts',
+    'access arguments' => array('access shift schedule'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['shift_scheduler/old_shifts_results']= array(
+    'title' => t('Old shifts'),
+    'page callback' => 'shift_scheduler_old_shifts_results',
+    'access arguments' => array('access shift schedule'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/settings/shift_scheduler']= array(
+    'title' => t('Shift Scheduler'),
+    'description' => t('Administer the slots and default shifts on the shift schedule.'),
+    'access arguments' => array(
+      'administer shift_scheduler',
+    ),
+    'type' => MENU_NORMAL_ITEM,
+    'page callback' => 'shift_scheduler_admin_slots',
+  );
+  $items['admin/settings/shift_scheduler/slot'] = array(
+    'title' => t('Edit slots'),
+    'page callback' => 'shift_scheduler_admin_slots',
+    'access arguments' => array(
+      'administer shift_scheduler',
+    ),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['admin/settings/shift_scheduler/configure'] = array(
+    'title' => t('Configure Shift Scheduler'),
+    'page callback' => 'shift_scheduler_configure',
+    'access arguments' => array(
+      'administer shift_scheduler',
+    ),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['admin/settings/shift_scheduler/default_shifts']= array(
+    'title' => t('Edit default shifts'),
+    'page callback' => 'shift_scheduler_admin_default_shifts',
+    'access arguments' => array(
+      'administer shift_scheduler',
+    ),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
