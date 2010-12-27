@@ -32,6 +32,17 @@ function shift_scheduler_perm() {
   );
 }
 
+
+/**
+ * Implements hook_init.
+ * Calls drupal_add_css() so that shift_scheduler.css is
+ * appended to the top of each of the pages.
+ */
+function shift_scheduler_init() {
+  drupal_add_css(drupal_get_path('module', 'shift_scheduler') . '/shift_scheduler.css');
+}
+
+
 /**
  * Write a table row representing a given day's shifts.
  * Used as a subroutine in shift_scheduler_schedule().
