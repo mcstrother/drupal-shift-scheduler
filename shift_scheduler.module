@@ -295,10 +295,10 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
     $shift_text = '<span class="open-shift">' . $shift_text .'</span>';
   }
   elseif ($uid == -1) {
-    $shift_text = '<font  color="Green">' . $shift_text . '</font>';
+    $shift_text = '<span class="closed-shift"' . $shift_text . '</span>';
   }
   elseif ($uid == $user->uid) {
-    $shift_text = '<font style="BACKGROUND-COLOR: #254117">' . $shift_text . '</font>';
+    $shift_text = '<span class="taken-shift">' . $shift_text . '</span>';
   }
 
   return $shift_text;
