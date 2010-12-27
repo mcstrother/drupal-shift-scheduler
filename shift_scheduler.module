@@ -13,7 +13,7 @@ function shift_scheduler_help($path, $arg) {
   $output = '';
   switch ($path) {
     case "admin/help#shift_scheduler":
-      $output = '<p>' . t("Displays the shift schedule managed by shift_scheduler") . '</p>';
+      $output = '<p>' . t("Displays the shift schedule managed by shift_scheduler") . '</p>'; // Not too sure about this line. Does it need to be enclosed in a paragraph?
       break;
   }
   return $output;
@@ -47,8 +47,8 @@ function shift_scheduler_perm() {
  */
 function _write_date_row(&$schedule_rows, $slot_cells, $timestamp, $slot_ids){
   $row_data = array();
-  $row_data[] = array('data'=>'<b><p>' . date('l', $timestamp) . '</p><p>'. date('n/j/Y', $timestamp) . '</p></b>' , 
-		      'valign'=>'center');
+  $row_data[] = array('data'=>'<strong>' . date('l', $timestamp) . '</strong><br /><strong>'. date('n/j/Y', $timestamp) . '</strong>' ,
+		      'class'=>'schedule-display');
   foreach($slot_ids as $slot_id) {
     $row_data[] =  $slot_cells[$slot_id];
   }
@@ -238,10 +238,10 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
     $options = array('query' => "shift=$shift_id");
     if ($name==t("Open Shift")) {
       //make the link red
-      $options['attributes'] = array('style' => 'color: #FF0000');
+      $options['attributes'] = array('class' => 'open-shift');
     }
     elseif($uid ==-1){
-      $options['attributes'] = array('style' => 'color: #008000'); //make the link green
+      $options['attributes'] = array('class' => 'closed-shift'); //make the link green
     }
     $link_page = 'shift_scheduler/change_shift';
   }
@@ -254,7 +254,7 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
           'shift_id' => $shift_id,
           'claim' => TRUE,
         ),
-        'attributes' => array('style' => 'color: #FF0000'),
+        'attributes' => array('class' => 'open-shift'),
       );
       $link_page = 'shift_scheduler';
   }
@@ -290,13 +290,13 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
   }
 
   if($uid==0||$uid==NULL){//if it's still an open shift, make it red and bold
-    $shift_text = '<b><font  color="Red">' . $shift_text .'</font></b>';
+    $shift_text = '<span class="open-shift">' . $shift_text .'</span>';
   }
   elseif($uid ==-1){
-    $shift_text = '<font  color="Green">' . $shift_text .'</font>';
+    $shift_text = '<span class="closed-shift">' . $shift_text .'</span>';
   }
   elseif($uid==$user->uid){
-    $shift_text = '<font style="BACKGROUND-COLOR: #254117">' . $shift_text . '</font>'; 
+    $shift_text = '<span class="taken-shift">' . $shift_text . '</span>'; 
   }
 
   return $shift_text;
@@ -371,14 +371,14 @@ function shift_scheduler_schedule() {
   // the relevant data to the page content
   
   $schedule_header = array();
-  $schedule_header[] = array('data'=>t('Date'), 'valign'=>'top');
+  $schedule_header[] = array('data'=>t('Date'), 'class'=>'schedule-header');
   
   //get the slot names and the number of slots
   $slots_result = db_query('SELECT slot_id, display_name FROM {shift_scheduler_slots} WHERE status=0 ORDER BY {shift_scheduler_slots}.display_name');//active slots only
   $slot_ids = array();
   while($slot_row = db_fetch_object($slots_result)){
     $slot_ids[] = $slot_row->slot_id;
-    $schedule_header[] = array('data'=> $slot_row->display_name, 'valign'=>'top');
+    $schedule_header[] = array('data'=> $slot_row->display_name, 'class'=>'schedule-header');
   }
   $schedule_rows = array();
   $volunteer_cells = array();
@@ -397,14 +397,14 @@ function shift_scheduler_schedule() {
       }
     }
     $shift_text = _schedule_format_shift_text($row->uid, $row->shift_id, $start_time_t, $end_time_t);
-    $volunteer_cells[$row->slot_id] .= '<p> ' . $shift_text .  "</p>";
+    $volunteer_cells[$row->slot_id] .= '<p> ' . $shift_text .  "</p>"; // Does these really need to be contained within a paragraph tags? It would be more efficient to define a class for the TR and then style it in the CSS.
   }
   _write_date_row($schedule_rows,$volunteer_cells, $midnight-10, $slot_ids);//write the last day
 
 
   //display something if there is no content on the page
   if ( !$has_content){
-    $page_content .= '<p><b>' .t('There are no shifts to display in this date range.') . '</b></p>' ;
+    $page_content .= '<p><strong>' .t('There are no shifts to display in this date range.') . '</strong></p>' ;
   }
   else{
     $page_content .= theme('table',$schedule_header, $schedule_rows);
@@ -570,7 +570,7 @@ function shift_scheduler_change_shift_form(&$form_state) {
   
   $form = array();
   $instructions  = t('Select which volunteer is taking the shift from the "Volunteer" menu. ').
-    t('To split the shift between two volunteers, fill the time (in military format) at which the secondary volunteer will take over for the first volunteer in the "Split Time" box. ') .
+    t('To split the shift between two volunteers, fill the time (in the 24-hour clock) at which the secondary volunteer will take over for the first volunteer in the "Split Time" box. ') .
     t('An "Open Shift" is a shift that should be filled but no one has volunteered to take it yet. ').
     t('A "Closed Shift" is a shift which was placed on the schedule, but does not require anyone to take it.');
   $form['instructions'] = array(
@@ -878,8 +878,8 @@ function shift_scheduler_old_shifts_results() {
   $page_content .= '<table class="body-table"> 
     <tbody>
       <tr>
-        <th valign="top" class="table-label">' .t(' Date').' </th>
-        <th valign="top">'.t(' Shifts').' </th>
+        <th>' .t(' Date').' </th>
+        <th>'.t(' Shifts').' </th>
       </tr> ';
   $midnight = 0;
   $has_content = FALSE;
@@ -900,13 +900,13 @@ function shift_scheduler_old_shifts_results() {
       $midnight = mktime(0, 0, 0, date('n',$stt), date('j',$stt) + 1, date('Y',$stt));
     }
     // write shift time in form e.g. 0900 -1300 Slot Name
-    $page_content .= '<p>' . date('Hi', $stt) . ' - ' . date('Hi',$ett) . ' ' . $row->display_name . '</p>';
+    $page_content .= '<p>' . date('Hi', $stt) . ' - ' . date('Hi',$ett) . ' ' . $row->display_name . '</p>'; // Does these really need to be contained within a paragraph tags? It would be more efficient to define a class for the TR and then style it in the CSS.
   }
   $page_content .= '</tbody></table>';
   if (!$has_content) {
     $page_content .= t("No shifts to display"); 
   }  
-  $page_content .= '<p><b>'.t('Total duty taken:').'</b>' . 
+  $page_content .= '<p><strong>'.t('Total duty taken:').'</strong>' . 
     floor($total_duty / 3600) . t(' hours ') .
     floor(($total_duty % 3600) / 60) . t(' minutes').'</p>';
   return $page_content;
