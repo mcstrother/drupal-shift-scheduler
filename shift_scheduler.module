@@ -171,8 +171,8 @@ function shift_scheduler_old_schedule_form_submit($form, &$form_state) {
 function _shift_scheduler_schedule_format_name($uid) {
   $display_name = NULL;
   if (module_exists('profile')) {
-    $last_name_row  = db_fetch_object(db_query("SELECT value FROM {profile_values} WHERE fid=2 AND uid=%d", $uid));
-    $first_name_row = db_fetch_object(db_query("SELECT value FROM {profile_values} WHERE fid=1 AND uid=%d", $uid));
+    $last_name_row  = db_fetch_object(db_query("SELECT pv.value FROM {profile_values} AS pv INNER JOIN {profile_fields} AS pf ON pv.fid = pf.fid WHERE pf.name = 'profile_last_name' AND pv.uid=%d", $uid));
+    $first_name_row = db_fetch_object(db_query("SELECT value FROM {profile_values} AS pv INNER JOIN {profile_fields} AS pf ON pv.fid = pf.fid WHERE pf.name = 'profile_first_name' AND pv.uid=%d", $uid));
     if ($first_name_row && $last_name_row) {
       $first_name    = ucwords($first_name_row->value);
       $last_name     = ucwords($last_name_row->value);
