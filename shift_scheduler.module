@@ -42,6 +42,12 @@ function shift_scheduler_init() {
   drupal_add_css(drupal_get_path('module', 'shift_scheduler') . '/shift_scheduler.css');
 }
 
+/**
+ * Wraps string in a div tag specific to this module to make css work.
+ */
+function _shift_scheduler_wrap_content($content) {
+  return '<div id="shift-scheduler">' . $content . '</div>';
+}
 
 /**
  * Write a table row representing a given day's shifts.
@@ -431,7 +437,7 @@ function shift_scheduler_schedule() {
   else {
     $page_content .= theme('table', $schedule_header, $schedule_rows);
   }
-  return $page_content;
+  return _shift_scheduler_wrap_content($page_content);
 
 }
 
@@ -773,7 +779,7 @@ function shift_scheduler_change_shift() {
   else {
     $page_content = t("This shift occured in the past. Please contact the webmaster to edit historical shifts.");
   }
-  return $page_content;
+  return _shift_scheduler_wrap_content($page_content);
 }
 
 /**
@@ -953,7 +959,7 @@ function shift_scheduler_old_shifts_results() {
   $page_content .= '<p><strong>' . t('Total duty taken:') . '</strong>' .
     floor($total_duty / 3600) . t(' hours ') .
     floor(($total_duty % 3600) / 60) . t(' minutes') . '</p>';
-  return $page_content;
+  return _shift_scheduler_wrap_content($page_content);
 }
 
 /**** ADMINISTRATIVE FEATURES
