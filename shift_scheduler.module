@@ -865,12 +865,12 @@ function shift_scheduler_old_shifts() {
 /**
  * Define the appearance of the results page
  * which is displayed after the old shifts form
- * is submitted..
+ * is submitted.
  *
  */
 function shift_scheduler_old_shifts_results() {
   $page_content = '';
-  //get the parameters from the URL
+  // Get the parameters from the URL.
   $uid        = $_GET['uid'];
   $start_time = $_GET['start_time'];
   $end_time   = $_GET['end_time'];
