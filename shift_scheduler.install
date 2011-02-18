@@ -339,7 +339,7 @@ function shift_scheduler_update_6200() {
 //standard functions to create and destroy
 //the tables on install and uninstall
 function shift_scheduler_install() {
-  //create shift_scheduler tables	
+  //Create shift_scheduler tables.
   drupal_install_schema('shift_scheduler');
 }
 
