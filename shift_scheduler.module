@@ -184,7 +184,7 @@ function _shift_scheduler_schedule_format_name($uid) {
     if ($first_name_row && $last_name_row) {
       $first_name    = ucwords($first_name_row->value);
       $last_name     = ucwords($last_name_row->value);
-      $first_initial = substr($first_name, 0, 1);
+      $first_initial = drupal_substr($first_name, 0, 1);
       $display_name  = $first_initial . ". " . $last_name;
     }
   }
@@ -607,9 +607,9 @@ function shift_scheduler_change_shift_form(&$form_state) {
   }
 
   $form = array();
-  $instructions  = t('Select which volunteer is taking the shift from the "Volunteer" menu. ') .
-    t('To split the shift between two volunteers, fill the time (in military format) at which the secondary volunteer will take over for the first volunteer in the "Split Time" box. ') .
-    t('An "Open Shift" is a shift that should be filled but no one has volunteered to take it yet. ') .
+  $instructions = t('Choose which volunteer is taking the shift from the "Volunteer" menu.') . ' ' .
+    t('To split the shift between two volunteers, fill the time (in military format) at which the secondary volunteer will take over for the first volunteer in the "Split Time" box.') . ' ' .
+    t('An "Open Shift" is a shift that should be filled but no one has volunteered to take it yet.') . ' ' .
     t('A "Closed Shift" is a shift which was placed on the schedule, but does not require anyone to take it.');
   $form['instructions'] = array(
     '#type' => 'item',
@@ -652,7 +652,7 @@ function shift_scheduler_change_shift_form(&$form_state) {
 
 function shift_scheduler_change_shift_form_validate($form, &$form_state) {
   $fi = $form_state['values'];
-  if ( strlen($fi['split_time']) != 4 && strlen($fi['split_time']) != 0 ) {
+  if ( drupal_strlen($fi['split_time']) != 4 && drupal_strlen($fi['split_time']) != 0 ) {
     form_set_error('split_time', t('The split time must be a valid military time.'));
   }
 
@@ -663,7 +663,7 @@ function shift_scheduler_change_shift_form_validate($form, &$form_state) {
   $end_time = strtotime($shift_info->end_time);
   // split is true if and only if a valid split has been entered.
   $split_time = 0;
-  $split = ( strlen($fi['split_time']) == 4); // This is a preliminary check that a time and secondary volunteer have been entered.
+  $split = ( drupal_strlen($fi['split_time']) == 4); // This is a preliminary check that a time and secondary volunteer have been entered.
   if ($split) {
     // Convert the military time entry into a full timestamp.
     $st = $fi['split_time']; //st stands for "split time".
@@ -717,7 +717,7 @@ function shift_scheduler_change_shift_form_submit($form, &$form_state) {
 
   // Split is true if and only if a valid split has been entered.
   $split_time = 0;
-  $split = ( strlen($fi['split_time']) == 4); // Preliminary check that a time and secondary volunteer have been entered.
+  $split = ( drupal_strlen($fi['split_time']) == 4); // Preliminary check that a time and secondary volunteer have been entered.
   if ($split) {
     // Convert the military time entry into a full timestamp.
     $split_time = $form_state['values']['split_time_int'];
@@ -767,7 +767,7 @@ function shift_scheduler_change_shift() {
   $end_time   = strtotime($shift_info->end_time);
 
   drupal_set_title(t('Changing shift %st - %et on %sd',
-                     array(
+  array(
     '%st' => date('Hi', $start_time),
     '%et' => date('Hi', $end_time),
     '%sd' => date('M j', $start_time),
@@ -898,12 +898,11 @@ function shift_scheduler_old_shifts_results() {
     $result = db_query("SELECT ss_shifts.slot_id, start_time, end_time, display_name \n " .
                        "FROM {shift_scheduler_shifts} AS ss_shifts INNER JOIN {shift_scheduler_slots} AS ss_slots ON ss_slots.slot_id=ss_shifts.slot_id \n " .
                        "WHERE uid=%d AND (start_time>'%s' AND end_time<'%s') \n " .
-                       "ORDER BY start_time \n "
-                       ,
-                       $uid,
-                       date('Y-m-d H:i:s', $start_time),
-                       date('Y-m-d H:i:s', $end_time)
-                      );
+                       "ORDER BY start_time \n ",
+      $uid,
+      date('Y-m-d H:i:s', $start_time),
+      date('Y-m-d H:i:s', $end_time)
+      );
   }
   else {
     // Give all the shifts taken by the given user *in the given slot*
@@ -911,13 +910,12 @@ function shift_scheduler_old_shifts_results() {
     $result = db_query("SELECT ss_shifts.slot_id, start_time, end_time, display_name \n " .
                        "FROM {shift_scheduler_shifts} AS ss_shifts INNER JOIN {shift_scheduler_slots} AS ss_slots ON ss_slots.slot_id=ss_shifts.slot_id \n " .
                        "WHERE uid=%d AND (start_time>'%s' AND end_time<'%s')  AND ss_shifts.slot_id=%d\n " .
-                       "ORDER BY start_time \n "
-                       ,
-                       $uid,
-                       date( 'Y-m-d H:i:s', $start_time),
-                       date( 'Y-m-d H:i:s', $end_time),
-                       $_GET['slot_id']
-                      );
+                       "ORDER BY start_time \n ",
+      $uid,
+      date( 'Y-m-d H:i:s', $start_time),
+      date( 'Y-m-d H:i:s', $end_time),
+      $_GET['slot_id']
+      );
   }
 
   // Count the total amount of duty taken.
@@ -930,8 +928,8 @@ function shift_scheduler_old_shifts_results() {
   $page_content .= '<table class="body-table">
     <tbody>
       <tr>
-        <th valign="top" class="table-label">' . t(' Date') . ' </th>
-        <th valign="top">' . t(' Shifts') . ' </th>
+        <th valign="top" class="table-label"> ' . t('Date') . ' </th>
+        <th valign="top"> ' . t('Shifts') . ' </th>
       </tr> ';
   $midnight = 0;
   $has_content = FALSE;
@@ -959,8 +957,8 @@ function shift_scheduler_old_shifts_results() {
     $page_content .= t("No shifts to display");
   }
   $page_content .= '<p><strong>' . t('Total duty taken:') . '</strong>' .
-    floor($total_duty / 3600) . t(' hours ') .
-    floor(($total_duty % 3600) / 60) . t(' minutes') . '</p>';
+    floor($total_duty / 3600) .' ' . t('hours') . ' ' .
+    floor(($total_duty % 3600) / 60) .' '. t('minutes') . '</p>';
   return _shift_scheduler_wrap_content($page_content);
 }
 
@@ -972,7 +970,7 @@ function shift_scheduler_old_shifts_results() {
  create default times for each of the slots, rename slots, delete slots,
  deactivate slots, etc.
 
- *******/
+ */
 
 /**
  *
@@ -1376,20 +1374,20 @@ function shift_scheduler_admin_default_shifts_validate($form, &$form_state) {
     $st = $form_state['values'][$i]['start_time'];
     $et = $form_state['values'][$i]['end_time'];
 
-    if (!((strlen($st) == strlen($et)) && (strlen($st) == 4 || strlen($st) == 0))) {
+    if (!((drupal_strlen($st) == drupal_strlen($et)) && (drupal_strlen($st) == 4 || drupal_strlen($st) == 0))) {
       form_set_error($i, t('Both the start time and the end time must either be blank or full 4-number military times (e.g. 0900 or 1354)'));
     }
   }
   // Check that either:
   // neither or both of the times for a new slot are filled in
-  if (strlen($form_state['values']['new_time']['start_time']) == 4
-          ^ strlen($form_state['values']['new_time']['end_time']) == 4) {
+  if (drupal_strlen($form_state['values']['new_time']['start_time']) == 4
+          ^ drupal_strlen($form_state['values']['new_time']['end_time']) == 4) {
     form_set_error('new_time', t('To add a new default shift, you must enter values for both its start and end times'));
   }
 
   //check that the new default shift does not overlap with any of the old ones
-  if (strlen($form_state['values']['new_time']['start_time']) == 4 &&
-     strlen($form_state['values']['new_time']['end_time']) == 4) {
+  if (drupal_strlen($form_state['values']['new_time']['start_time']) == 4 &&
+    drupal_strlen($form_state['values']['new_time']['end_time']) == 4) {
     $nss = $form_state['values']['new_time']['start_time']; //new start string
     $nes = $form_state['values']['new_time']['end_time']; //new end string
     $nst = mktime((int) ($nss[0] . $nss[1]), (int) ($nss[2] . $nss[3])); //new start time
@@ -1438,7 +1436,7 @@ function shift_scheduler_admin_default_shifts_submit($form, &$form_state) {
     $ss = $form_state['values'][$i]['start_time'];
     $es = $form_state['values'][$i]['end_time'];
     // If both the begin and end time are blanked, delete the default shift
-    if (strlen($ss) == 0 && strlen($es) == 0) {
+    if (drupal_strlen($ss) == 0 && drupal_strlen($es) == 0) {
       db_query('DELETE FROM {shift_scheduler_slot_times} WHERE slot_time_id=%d', $slot_time_id);
       drupal_set_message(t('Default shift was deleted.'));
     }
@@ -1454,22 +1452,22 @@ function shift_scheduler_admin_default_shifts_submit($form, &$form_state) {
       }
     }
     db_query("UPDATE {shift_scheduler_slot_times} SET start_time='%s', end_time='%s', monday=%d, tuesday=%d, wednesday=%d, thursday=%d, friday=%d, saturday=%d, sunday=%d WHERE slot_time_id = %d",
-             date("Y-m-d H:i:00", $start_time),
-             date("Y-m-d H:i:00", $end_time),
-             $weekday[1],
-             $weekday[2],
-             $weekday[3],
-             $weekday[4],
-             $weekday[5],
-             $weekday[6],
-             $weekday[7],
-             $slot_time_id
-            );
+      date("Y-m-d H:i:00", $start_time),
+      date("Y-m-d H:i:00", $end_time),
+      $weekday[1],
+      $weekday[2],
+      $weekday[3],
+      $weekday[4],
+      $weekday[5],
+      $weekday[6],
+      $weekday[7],
+      $slot_time_id
+      );
   }
   // Add new default shift
   // check that both begin and end time of new shift are filled in
-  if (strlen($form_state['values']['new_time']['start_time']) == 4
-          && strlen($form_state['values']['new_time']['end_time']) == 4) {
+  if (drupal_strlen($form_state['values']['new_time']['start_time']) == 4
+          && drupal_strlen($form_state['values']['new_time']['end_time']) == 4) {
     // get the strings for the start and end times from the form
     // ss = start string
     $ss = $form_state['values']['new_time']['start_time'];
@@ -1567,7 +1565,7 @@ function shift_scheduler_configure_form(&$form_state) {
 }
 
 /**
- * Implementaiton of hook_menu().
+ * Implementation of hook_menu().
  *
  * @todo Find a way to get something as a normal menu item.
  */
