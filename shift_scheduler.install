@@ -265,7 +265,7 @@ function shift_scheduler_update_6200() {
   //by default make authenticated users eligible for previously existing slots
   $result = db_query('SELECT slot_id FROM  {shift_scheduler_slots}');
   while ($row = db_fetch_object($result)) {
-    update_sql('INSERT INTO {shift_scheduler_slot_roles} (slot_id, rid) VALUES ('. $row->slot_id .', 2)');
+    update_sql('INSERT INTO {shift_scheduler_slot_roles} (slot_id, rid) VALUES (' . $row->slot_id . ', 2)');
   }
 
   db_change_field($ret, 'shift_scheduler_shifts', 'uid', 'uid', array(
